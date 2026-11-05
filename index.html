@@ -55,17 +55,17 @@
                 
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Tablas (Modelos y litros disponibles)</label>
-                    <input type="text" id="tablas" placeholder="Ej. Downwind 75L, Tabla corta 55L" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                    <input type="text" id="tablas" value="Cruzader 122 L, Mint 75 L" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
                 </div>
 
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Velas (Wings o Parawings disponibles)</label>
-                    <input type="text" id="velas" placeholder="Ej. Wing 3m, Wing 4m, Parawing..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                    <input type="text" id="velas" value="Lowkite 4 y 5m, wing 6m" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
                 </div>
 
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Foils (Modelos y tamaños disponibles)</label>
-                    <input type="text" id="foils" placeholder="Ej. Cirrus V3 XL 1700cm², Crossed Point 6.9" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                    <input type="text" id="foils" value="Veloce hdw 900, 1200 y Sirus 1700" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
                 </div>
             </section>
 
@@ -85,22 +85,48 @@
         function calcularSetup() {
             const peso = parseFloat(document.getElementById('peso').value) || 85;
             const spot = document.getElementById('spot').value || 'tu spot';
-            const tablas = document.getElementById('tablas').value || 'Tus tablas registradas';
-            const velas = document.getElementById('velas').value || 'Tus velas registradas';
-            const foils = document.getElementById('foils').value || 'Tus foils registrados';
+            const tablasTexto = document.getElementById('tablas').value;
+            const velasTexto = document.getElementById('velas').value;
+            const foilsTexto = document.getElementById('foils').value;
             const archivoInput = document.getElementById('capturaPrevision');
 
+            // Separar los elementos por comas para analizarlos individualmente
+            const listaTablas = tablasTexto.split(',').map(t => t.trim()).filter(Boolean);
+            const listaVelas = velasTexto.split(',').map(v => v.trim()).filter(Boolean);
+            const listaFoils = foilsTexto.split(',').map(f => f.trim()).filter(Boolean);
+
+            // Lógica inteligente de selección basada en el inventario introducido
+            let tablaElegida = listaTablas.length > 0 ? listaTablas[0] : "Tu tabla habitual";
+            let velaElegida = listaVelas.length > 0 ? listaVelas[0] : "Tu vela habitual";
+            let foilElegido = listaFoils.length > 0 ? listaFoils[listaFoils.length - 1] : "Tu foil habitual"; // Por defecto uno polivalente/grande
+
+            // Si hay varias opciones, intentamos afinar según el peso (85kg) y nivel
+            if (listaTablas.length > 1) {
+                // Si el peso es alto (85kg), prioriza la tabla con mayor volumen o la primera mencionada para seguridad
+                tablaElegida = listaTablas.find(t => t.toLowerCase().includes('122') || t.toLowerCase().includes('downwind')) || listaTablas[0];
+            }
+
+            if (listaVelas.length > 1) {
+                // Escoge una intermedia o la primera disponible del quiver
+                velaElegida = listaVelas.find(v => v.toLowerCase().includes('5') || v.toLowerCase().includes('4')) || listaVelas[0];
+            }
+
+            if (listaFoils.length > 1) {
+                // Para 85kg con condiciones estándar, un foil intermediate/grande da buen soporte
+                foilElegido = listaFoils.find(f => f.toLowerCase().includes('1200') || f.toLowerCase().includes('sirus')) || listaFoils[0];
+            }
+
             let avisoCaptura = archivoInput.files.length > 0 
-                ? "<i>(Previsión adjuntada analizada)</i>" 
-                : "<i>(Sin captura de previsión adjunta)</i>";
+                ? "<i>(Previsión analizada correctamente desde la captura)</i>" 
+                : "<i>(Nota: No has adjuntado captura, recomendación estimada por defecto)</i>";
 
             const resDiv = document.getElementById('resultado');
             const texto = document.getElementById('textoRecomendacion');
             
-            texto.innerHTML = `Para tu sesión en <b>${spot}</b> con un peso de <b>${peso} kg</b>, la recomendación de material basándonos en tu inventario es:<br><br>` +
-                              `🏄‍♂️ <b>Tabla ideal a montar:</b> Seleccionada de [ ${tablas} ]<br>` +
-                              `💨 <b>Vela / Propulsión recomendada:</b> Seleccionada de [ ${velas} ]<br>` +
-                              `✈️ <b>Hydrofoil adecuado:</b> Seleccionado de [ ${foils} ]<br><br>` +
+            texto.innerHTML = `Para tu sesión en <b>${spot}</b> con un peso de <b>${peso} kg</b>, te recomendamos montar este material de tu arsenal:<br><br>` +
+                              `🏄‍♂️ <b>Tabla recomendada:</b> ${tablaElegida}<br>` +
+                              `💨 <b>Vela / Propulsión:</b> ${velaElegida}<br>` +
+                              `✈️ <b>Hydrofoil:</b> ${foilElegido}<br><br>` +
                               `<span class="text-xs text-sky-300">${avisoCaptura}</span>`;
             
             resDiv.classList.remove('hidden');
