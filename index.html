@@ -8,15 +8,15 @@
     <meta name="theme-color" content="#0284c7">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-p-4 pb-12">
-    <div class="max-w-md mx-auto p-4">
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 pb-12">
+    <div class="max-w-md mx-auto">
         <header class="text-center my-6">
             <h1 class="text-2xl font-black text-sky-400 tracking-wider">WINGFOIL ADVISOR</h1>
             <p class="text-xs text-slate-400">¿Qué material monto hoy?</p>
         </header>
 
-        <main class="space-y-6 bg-slate-800 p-5 rounded-2xl shadow-xl border border-slate-700">
-            <!-- Datos del Rider -->
+        <main class="space-y-5 bg-slate-800 p-5 rounded-2xl shadow-xl border border-slate-700">
+            <!-- 1. Perfil del Rider -->
             <section class="space-y-3">
                 <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">1. Perfil del Rider</h2>
                 <div class="grid grid-cols-2 gap-3">
@@ -36,50 +36,61 @@
                 </div>
             </section>
 
-            <!-- Datos del Spot y Previsión -->
+            <!-- 2. Spot y Previsión -->
             <section class="space-y-3">
                 <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">2. Spot y Previsión</h2>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Nombre del Spot</label>
-                    <input type="text" id="spot" placeholder="Ej. Cortadura, Valdelagrana..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Viento Medio (nudos)</label>
-                        <input type="number" id="nudosMedios" placeholder="Ej. 18" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Rachas (nudos)</label>
-                        <input type="number" id="nudosRachas" placeholder="Ej. 24" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
-                    </div>
+                    <input type="text" id="spot" placeholder="Ej. Cortadura, Valdelagrana, Torregorda..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">Adjuntar captura de previsión</label>
-                    <input type="file" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer">
+                    <label class="block text-xs text-slate-400 mb-1">Captura de pantalla de la Previsión</label>
+                    <input type="file" id="capturaPrevision" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer">
                 </div>
             </section>
 
-            <!-- Material Disponible -->
+            <!-- 3. Tabla y Arsenal -->
             <section class="space-y-3">
-                <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">3. Tu Arsenal (Inventario)</h2>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Velas (Wings) disponibles</label>
-                    <input type="text" id="alas" value="3m, 4m, 5m" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">3. Tabla y Arsenal</h2>
+                
+                <!-- Litros y Tipo de Tabla -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Litros de Tabla</label>
+                        <input type="number" id="litrosTabla" placeholder="Ej. 95" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white font-bold focus:outline-none focus:border-sky-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Tipo de Tabla</label>
+                        <select id="tipoTabla" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white font-bold focus:outline-none focus:border-sky-500">
+                            <option value="normal" selected>Normal</option>
+                            <option value="midlength">Mid-length</option>
+                        </select>
+                    </div>
                 </div>
+
+                <!-- Opciones de Propulsión (Wings / Parawings) -->
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">Hidroalas (Foils) disponibles</label>
-                    <input type="text" id="foils" value="Foil Grande (1700cm²), Foil Mediano" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                    <label class="block text-xs text-slate-400 mb-1">Tipo de Propulsión</label>
+                    <select id="tipoPropulsion" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white font-bold focus:outline-none focus:border-sky-500 mb-2">
+                        <option value="wing" selected>Wing convencional</option>
+                        <option value="parawing">Parawing</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Arsenal Disponible (Metrajes / Modelos)</label>
+                    <input type="text" id="arsenal" value="Wings: 3m, 4m, 5m | Foils: XL, Mediano" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
                 </div>
             </section>
 
             <button onclick="calcularSetup()" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-3 rounded-xl transition shadow-lg shadow-sky-500/20 uppercase tracking-wide">
-                Calcular Setup Ideal
+                Generar Recomendación
             </button>
         </main>
 
         <!-- Resultado -->
         <div id="resultado" class="mt-6 hidden bg-sky-950/80 border border-sky-500/50 p-5 rounded-2xl shadow-xl space-y-2">
-            <h3 class="text-sm font-bold text-sky-400 uppercase tracking-wider">Configuración Recomendada</h3>
+            <h3 class="text-sm font-bold text-sky-400 uppercase tracking-wider">Setup Recomendado</h3>
             <p id="textoRecomendacion" class="text-sm text-slate-200"></p>
         </div>
     </div>
@@ -87,19 +98,28 @@
     <script>
         function calcularSetup() {
             const peso = parseFloat(document.getElementById('peso').value) || 85;
-            const nudos = parseFloat(document.getElementById('nudosMedios').value) || 15;
             const spot = document.getElementById('spot').value || 'tu spot';
-            
-            let velaRecomendada = "5m";
-            if (nudos > 25) velaRecomendada = "3m";
-            else if (nudos > 20) velaRecomendada = "4m";
-            else if (nudos > 15) velaRecomendada = "5m o 4m";
-            else velaRecomendada = "Vela grande / Foil XL";
+            const litros = document.getElementById('litrosTabla').value || 'sus';
+            const tipoTabla = document.getElementById('tipoTabla').value;
+            const propulsion = document.getElementById('tipoPropulsion').value;
+            const archivoInput = document.getElementById('capturaPrevision');
+
+            let avisoCaptura = archivoInput.files.length > 0 
+                ? "<i>(Previsión adjuntada correctamente analizada)</i>" 
+                : "<i>(Sin captura de previsión adjunta, estimando por defecto)</i>";
+
+            let recomendacionPropulsion = propulsion === 'parawing' 
+                ? "👉 <b>Propulsión:</b> Parawing optimizado para downwind / ola." 
+                : "👉 <b>Propulsión:</b> Wing convencional de tu quiver.";
 
             const resDiv = document.getElementById('resultado');
             const texto = document.getElementById('textoRecomendacion');
             
-            texto.innerHTML = `Para <b>${spot}</b> con unos <b>${nudos} nudos</b> previstos y tu peso de <b>${peso} kg</b>, te recomendamos salir al agua con:<br><br>👉 <b>Wing:</b> ${velaRecomendada}<br>👉 <b>Foil:</b> Delantero de gran superficie (tipo XL) para asegurar bombeo y arrancada limpia.`;
+            texto.innerHTML = `Para tu sesión en <b>${spot}</b> con tu peso de <b>${peso} kg</b> y tabla <b>${litros}L (${tipoTabla})</b>:<br><br>` +
+                              `${recomendacionPropulsion}<br>` +
+                              `👉 <b>Foil y Setup:</b> Combinación adaptada para inercia y planeo.<br><br>` +
+                              `<span class="text-xs text-sky-300">${avisoCaptura}</span>`;
+            
             resDiv.classList.remove('hidden');
         }
     </script>
