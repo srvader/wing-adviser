@@ -41,7 +41,7 @@
                 <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">2. Spot y Previsión</h2>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Nombre del Spot</label>
-                    <input type="text" id="spot" placeholder="Ej. Cortadura, Valdelagrana, Torregorda..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
+                    <input type="text" id="spot" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Captura de pantalla de la Previsión</label>
@@ -55,17 +55,17 @@
                 
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Tablas (Modelos y litros disponibles)</label>
-                    <input type="text" id="tablas" value="Cruzader 122 L, Mint 75 L" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                    <input type="text" id="tablas" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
                 </div>
 
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Velas (Wings o Parawings disponibles)</label>
-                    <input type="text" id="velas" value="Lowkite 4 y 5m, wing 6m" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                    <input type="text" id="velas" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
                 </div>
 
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Foils (Modelos y tamaños disponibles)</label>
-                    <input type="text" id="foils" value="Veloce hdw 900, 1200 y Sirus 1700" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                    <input type="text" id="foils" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
                 </div>
             </section>
 
@@ -90,29 +90,23 @@
             const foilsTexto = document.getElementById('foils').value;
             const archivoInput = document.getElementById('capturaPrevision');
 
-            // Separar los elementos por comas para analizarlos individualmente
             const listaTablas = tablasTexto.split(',').map(t => t.trim()).filter(Boolean);
             const listaVelas = velasTexto.split(',').map(v => v.trim()).filter(Boolean);
             const listaFoils = foilsTexto.split(',').map(f => f.trim()).filter(Boolean);
 
-            // Lógica inteligente de selección basada en el inventario introducido
-            let tablaElegida = listaTablas.length > 0 ? listaTablas[0] : "Tu tabla habitual";
-            let velaElegida = listaVelas.length > 0 ? listaVelas[0] : "Tu vela habitual";
-            let foilElegido = listaFoils.length > 0 ? listaFoils[listaFoils.length - 1] : "Tu foil habitual"; // Por defecto uno polivalente/grande
+            let tablaElegida = listaTablas.length > 0 ? listaTablas[0] : "Introduce tus tablas";
+            let velaElegida = listaVelas.length > 0 ? listaVelas[0] : "Introduce tus velas";
+            let foilElegido = listaFoils.length > 0 ? listaFoils[listaFoils.length - 1] : "Introduce tus foils";
 
-            // Si hay varias opciones, intentamos afinar según el peso (85kg) y nivel
             if (listaTablas.length > 1) {
-                // Si el peso es alto (85kg), prioriza la tabla con mayor volumen o la primera mencionada para seguridad
                 tablaElegida = listaTablas.find(t => t.toLowerCase().includes('122') || t.toLowerCase().includes('downwind')) || listaTablas[0];
             }
 
             if (listaVelas.length > 1) {
-                // Escoge una intermedia o la primera disponible del quiver
                 velaElegida = listaVelas.find(v => v.toLowerCase().includes('5') || v.toLowerCase().includes('4')) || listaVelas[0];
             }
 
             if (listaFoils.length > 1) {
-                // Para 85kg con condiciones estándar, un foil intermediate/grande da buen soporte
                 foilElegido = listaFoils.find(f => f.toLowerCase().includes('1200') || f.toLowerCase().includes('sirus')) || listaFoils[0];
             }
 
