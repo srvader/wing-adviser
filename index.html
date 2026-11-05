@@ -49,37 +49,23 @@
                 </div>
             </section>
 
-            <!-- 3. Tabla y Arsenal -->
+            <!-- 3. Arsenal del Rider -->
             <section class="space-y-3">
-                <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">3. Tabla y Arsenal</h2>
+                <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">3. Tu Arsenal</h2>
                 
-                <!-- Litros y Tipo de Tabla -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Litros de Tabla</label>
-                        <input type="number" id="litrosTabla" placeholder="Ej. 95" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white font-bold focus:outline-none focus:border-sky-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Tipo de Tabla</label>
-                        <select id="tipoTabla" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white font-bold focus:outline-none focus:border-sky-500">
-                            <option value="normal" selected>Normal</option>
-                            <option value="midlength">Mid-length</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Opciones de Propulsión (Wings / Parawings) -->
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">Tipo de Propulsión</label>
-                    <select id="tipoPropulsion" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white font-bold focus:outline-none focus:border-sky-500 mb-2">
-                        <option value="wing" selected>Wing convencional</option>
-                        <option value="parawing">Parawing</option>
-                    </select>
+                    <label class="block text-xs text-slate-400 mb-1">Tablas (Modelo y Litros)</label>
+                    <input type="text" id="tablas" value="Ej. Downwind 75L, Tabla corta 55L" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
                 </div>
 
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">Arsenal Disponible (Metrajes / Modelos)</label>
-                    <input type="text" id="arsenal" value="Wings: 3m, 4m, 5m | Foils: XL, Mediano" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                    <label class="block text-xs text-slate-400 mb-1">Velas (Tamaños de Wing o Parawing)</label>
+                    <input type="text" id="velas" value="Ej. Wing 3m, Wing 4m, Parawing..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Foils (Modelos y tamaños)</label>
+                    <input type="text" id="foils" value="Ej. Cirrus V3 XL 1700cm², Foil mediano" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
                 </div>
             </section>
 
@@ -99,25 +85,22 @@
         function calcularSetup() {
             const peso = parseFloat(document.getElementById('peso').value) || 85;
             const spot = document.getElementById('spot').value || 'tu spot';
-            const litros = document.getElementById('litrosTabla').value || 'sus';
-            const tipoTabla = document.getElementById('tipoTabla').value;
-            const propulsion = document.getElementById('tipoPropulsion').value;
+            const tablas = document.getElementById('tablas').value || 'tus tablas';
+            const velas = document.getElementById('velas').value || 'tus velas';
+            const foils = document.getElementById('foils').value || 'tus foils';
             const archivoInput = document.getElementById('capturaPrevision');
 
             let avisoCaptura = archivoInput.files.length > 0 
-                ? "<i>(Previsión adjuntada correctamente analizada)</i>" 
-                : "<i>(Sin captura de previsión adjunta, estimando por defecto)</i>";
-
-            let recomendacionPropulsion = propulsion === 'parawing' 
-                ? "👉 <b>Propulsión:</b> Parawing optimizado para downwind / ola." 
-                : "👉 <b>Propulsión:</b> Wing convencional de tu quiver.";
+                ? "<i>(Previsión adjuntada correctamente)</i>" 
+                : "<i>(Sin captura de previsión adjunta)</i>";
 
             const resDiv = document.getElementById('resultado');
             const texto = document.getElementById('textoRecomendacion');
             
-            texto.innerHTML = `Para tu sesión en <b>${spot}</b> con tu peso de <b>${peso} kg</b> y tabla <b>${litros}L (${tipoTabla})</b>:<br><br>` +
-                              `${recomendacionPropulsion}<br>` +
-                              `👉 <b>Foil y Setup:</b> Combinación adaptada para inercia y planeo.<br><br>` +
+            texto.innerHTML = `Para tu sesión en <b>${spot}</b> con un peso de <b>${peso} kg</b>:<br><br>` +
+                              `🏄‍♂️ <b>Tabla sugerida de tu arsenal:</b> ${tablas}<br>` +
+                              `💨 <b>Vela / Propulsión:</b> ${velas}<br>` +
+                              `✈️ <b>Hydrofoil:</b> ${foils}<br><br>` +
                               `<span class="text-xs text-sky-300">${avisoCaptura}</span>`;
             
             resDiv.classList.remove('hidden');
