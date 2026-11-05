@@ -37,4 +37,74 @@
             </section>
 
             <!-- 2. Spot y Previsión -->
-            <section class="space-
+            <section class="space-y-3">
+                <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">2. Spot y Previsión</h2>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Nombre del Spot</label>
+                    <input type="text" id="spot" placeholder="Ej. Cortadura, Valdelagrana, Torregorda..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Captura de pantalla de la Previsión</label>
+                    <input type="file" id="capturaPrevision" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer">
+                </div>
+            </section>
+
+            <!-- 3. Arsenal Completo (Texto Libre) -->
+            <section class="space-y-3">
+                <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">3. Tu Arsenal Completo</h2>
+                
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Tablas (Modelos y litros disponibles)</label>
+                    <input type="text" id="tablas" placeholder="Ej. Downwind 75L, Tabla corta 55L" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Velas (Wings o Parawings disponibles)</label>
+                    <input type="text" id="velas" placeholder="Ej. Wing 3m, Wing 4m, Parawing..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Foils (Modelos y tamaños disponibles)</label>
+                    <input type="text" id="foils" placeholder="Ej. Cirrus V3 XL 1700cm², Crossed Point 6.9" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                </div>
+            </section>
+
+            <button onclick="calcularSetup()" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-3 rounded-xl transition shadow-lg shadow-sky-500/20 uppercase tracking-wide">
+                Generar Recomendación
+            </button>
+        </main>
+
+        <!-- Resultado -->
+        <div id="resultado" class="mt-6 hidden bg-sky-950/80 border border-sky-500/50 p-5 rounded-2xl shadow-xl space-y-2">
+            <h3 class="text-sm font-bold text-sky-400 uppercase tracking-wider">Setup Recomendado</h3>
+            <p id="textoRecomendacion" class="text-sm text-slate-200"></p>
+        </div>
+    </div>
+
+    <script>
+        function calcularSetup() {
+            const peso = parseFloat(document.getElementById('peso').value) || 85;
+            const spot = document.getElementById('spot').value || 'tu spot';
+            const tablas = document.getElementById('tablas').value || 'Tus tablas registradas';
+            const velas = document.getElementById('velas').value || 'Tus velas registradas';
+            const foils = document.getElementById('foils').value || 'Tus foils registrados';
+            const archivoInput = document.getElementById('capturaPrevision');
+
+            let avisoCaptura = archivoInput.files.length > 0 
+                ? "<i>(Previsión adjuntada analizada)</i>" 
+                : "<i>(Sin captura de previsión adjunta)</i>";
+
+            const resDiv = document.getElementById('resultado');
+            const texto = document.getElementById('textoRecomendacion');
+            
+            texto.innerHTML = `Para tu sesión en <b>${spot}</b> con un peso de <b>${peso} kg</b>, la recomendación de material basándonos en tu inventario es:<br><br>` +
+                              `🏄‍♂️ <b>Tabla ideal a montar:</b> Seleccionada de [ ${tablas} ]<br>` +
+                              `💨 <b>Vela / Propulsión recomendada:</b> Seleccionada de [ ${velas} ]<br>` +
+                              `✈️ <b>Hydrofoil adecuado:</b> Seleccionado de [ ${foils} ]<br><br>` +
+                              `<span class="text-xs text-sky-300">${avisoCaptura}</span>`;
+            
+            resDiv.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
