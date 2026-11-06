@@ -45,4 +45,128 @@
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Captura de pantalla de la Previsión</label>
-                    <input type="file" id="capturaPrevision" accept="image/*" class="w-full text-xs text-slate
+                    <input type="file" id="capturaPrevision" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer">
+                </div>
+            </section>
+
+            <!-- 3. Arsenal Completo -->
+            <section class="space-y-3">
+                <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">3. Tu Arsenal Completo</h2>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Tablas (Modelos y litros)</label>
+                    <input type="text" id="tablas" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Velas (Wings o Parawings)</label>
+                    <input type="text" id="velas" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Foils (Modelos y tamaños)</label>
+                    <input type="text" id="foils" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
+                </div>
+            </section>
+
+            <button onclick="consultarIA()" id="btnGenerar" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-3 rounded-xl transition shadow-lg shadow-sky-500/20 uppercase tracking-wide">
+                Generar Recomendación IA
+            </button>
+        </main>
+
+        <!-- Resultado -->
+        <div id="resultado" class="mt-6 hidden bg-sky-950/80 border border-sky-500/50 p-5 rounded-2xl shadow-xl space-y-2">
+            <h3 class="text-sm font-bold text-sky-400 uppercase tracking-wider">Recomendación del Asistente IA</h3>
+            <div id="textoRecomendacion" class="text-sm text-slate-200 space-y-2"></div>
+        </div>
+    </div>
+
+    <script>
+        async function consultarIA() {
+            const peso = document.getElementById('peso').value;
+            const nivel = document.getElementById('nivel').value;
+            const spot = document.getElementById('spot').value || "un spot local";
+            const tablas = document.getElementById('tablas').value;
+            const velas = document.getElementById('velas').value;
+            const foils = document.getElementById('foils').value;
+            const fileInput = document.getElementById('capturaPrevision');
+
+            const resDiv = document.getElementById('resultado');
+            const texto = document.getElementById('textoRecomendacion');
+            const btn = document.getElementById('btnGenerar');
+
+            resDiv.classList.remove('hidden');
+            texto.innerHTML = "🔄 <i>Analizando la previsión meteorológica y tu arsenal con Inteligencia Artificial...</i>";
+            btn.disabled = true;
+
+            let imagePart = null;
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const base64Data = await toBase64(file);
+                imagePart = {
+                    inlineData: {
+                        data: base64Data.split(',')[1],
+                        mimeType: file.type
+                    }
+                };
+            }
+
+            const promptText = `Actúa como un experto mundial y técnico especialista en Wingfoil. 
+            Datos del rider:
+            - Peso: ${peso} kg
+            - Nivel: ${nivel}
+            - Spot de navegación: ${spot}
+            
+            Su inventario disponible de material es:
+            - Tablas: ${tablas}
+            - Velas / Wings / Parawings: ${velas}
+            - Foils: ${foils}
+            
+            Analiza la captura de pantalla de la previsión de viento y olas adjunta. 
+            Reglas técnicas a aplicar:
+            1. A partir de 16 nudos de viento medio, si dispone de tabla corta y mid-length, recomienda firmemente la tabla corta. Con menos de 16 nudos, prioriza la de mayor volumen.
+            2. Si hay condiciones de olas formadas y buen viento, selecciona el foil más pequeño y rápido disponible en su inventario para ganar control en las bajadas.
+            3. Selecciona la vela o wing con el metraje adecuado al viento observado.
+            
+            Responde de forma directa, clara, estructurada y en español, indicando exactamente:
+            - 🏄‍♂️ Tabla recomendada y por qué.
+            - 💨 Vela/Wing recomendada y por qué.
+            - ✈️ Hydrofoil recomendado y por qué.`;
+
+            const contents = [promptText];
+            if (imagePart) contents.push(imagePart);
+
+            try {
+                const workerUrl = "https://wingadviser.ganexito-077.workers.dev/"; 
+
+                const response = await fetch(workerUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: contents }] })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    texto.innerHTML = "❌ Error devuelto: " + (typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
+                } else if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                    let aiText = data.candidates[0].content.parts[0].text;
+                    texto.innerHTML = aiText.replace(/\n/g, '<br>');
+                } else {
+                    texto.innerHTML = "❌ Estructura recibida: <pre style='font-size:10px; color:#cbd5e1; white-space: pre-wrap;'>" + JSON.stringify(data, null, 2) + "</pre>";
+                }
+            } catch (error) {
+                texto.innerHTML = "❌ Error de conexión: " + error.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function toBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+    </script>
+</body>
+</html>
