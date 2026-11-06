@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wingfoil Advisor</title>
+    <title>Wingfoil Advisor (Modo Local)</title>
     <style>
         :root {
             --bg-color: #0b131e;
@@ -89,33 +89,13 @@
             box-sizing: border-box;
         }
 
-        input[type="file"] {
-            display: none;
+        .row {
+            display: flex;
+            gap: 12px;
         }
 
-        .file-upload-btn {
-            display: inline-block;
-            background-color: var(--accent-color);
-            color: white;
-            padding: 10px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 0.9rem;
-            text-align: center;
-            transition: background 0.2s;
-        }
-
-        .file-upload-btn:hover {
-            opacity: 0.9;
-        }
-
-        #file-name {
-            display: block;
-            margin-top: 8px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            word-break: break-all;
+        .row .form-group {
+            flex: 1;
         }
 
         .btn-primary {
@@ -141,7 +121,8 @@
         .result-box {
             white-space: pre-line;
             line-height: 1.6;
-            font-size: 0.95rem;
+            font-size: 1rem;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -150,179 +131,114 @@
     <div class="container">
         <header>
             <h1>WINGFOIL ADVISOR</h1>
-            <p>Asistente IA experto en tu material</p>
+            <p>Selector de Material Local (Sin IA)</p>
         </header>
 
         <div class="card">
             <h2>1. Perfil del Rider</h2>
-            <div class="form-group">
-                <label for="weight">Peso (kg)</label>
-                <input type="number" id="weight" value="85">
-            </div>
-            <div class="form-group">
-                <label for="level">Nivel</label>
-                <select id="level">
-                    <option value="Intermedio">Intermedio</option>
-                    <option value="Avanzado" selected>Avanzado</option>
-                </select>
+            <div class="row">
+                <div class="form-group">
+                    <label for="weight">Peso (kg)</label>
+                    <input type="number" id="weight" value="85">
+                </div>
+                <div class="form-group">
+                    <label for="level">Nivel</label>
+                    <select id="level">
+                        <option value="Intermedio">Intermedio</option>
+                        <option value="Avanzado" selected>Avanzado</option>
+                    </select>
+                </div>
             </div>
         </div>
 
         <div class="card">
-            <h2>2. Spot y Previsión</h2>
+            <h2>2. Condiciones de la Previsión</h2>
             <div class="form-group">
-                <label for="spot">Nombre del Spot</label>
+                <label for="spot">Spot</label>
                 <input type="text" id="spot" value="Cortadura">
             </div>
-            <div class="form-group">
-                <label>Captura de pantalla de la Previsión</label>
-                <label for="image-input" class="file-upload-btn">Seleccionar archivo</label>
-                <input type="file" id="image-input" accept="image/*">
-                <span id="file-name">Ningún archivo seleccionado</span>
+            <div class="row">
+                <div class="form-group">
+                    <label for="wind-knots">Viento medio (nudos)</label>
+                    <input type="number" id="wind-knots" value="20" placeholder="Ej. 20">
+                </div>
+                <div class="form-group">
+                    <label for="wave-height">Olas / Swell (metros)</label>
+                    <input type="number" step="0.1" id="wave-height" value="1.5" placeholder="Ej. 1.5">
+                </div>
             </div>
         </div>
 
         <div class="card">
-            <h2>3. Tu Arsenal Completo</h2>
+            <h2>3. Tu Arsenal</h2>
             <div class="form-group">
-                <label for="boards">Tablas (Modelos y litros)</label>
-                <input type="text" id="boards" value="cruzader 122l mint 75l">
+                <label for="boards">Tablas disponibles</label>
+                <input type="text" id="boards" value="Cruzader 122L, Mint 75L">
             </div>
             <div class="form-group">
-                <label for="wings">Velas (Wings o Parawings)</label>
-                <input type="text" id="wings" value="parawing 4 y 5m y wing 6m">
+                <label for="wings">Velas disponibles</label>
+                <input type="text" id="wings" value="Parawing 4m, Parawing 5m, Wing 6m">
             </div>
             <div class="form-group">
-                <label for="foils">Foils (Modelos y tamaños)</label>
-                <input type="text" id="foils" value="900, 1200 y 1700">
+                <label for="foils">Foils disponibles</label>
+                <input type="text" id="foils" value="Foil 900, Foil 1200, Foil 1700">
             </div>
             
-            <button class="btn-primary" id="generate-btn">Generar Recomendación IA</button>
+            <button class="btn-primary" id="generate-btn">Obtener Setup Óptimo</button>
         </div>
 
         <div class="card">
-            <h2>Recomendación del Asistente IA</h2>
-            <div class="result-box" id="result-content">Pulsa el botón para obtener tu setup óptimo.</div>
+            <h2>Setup Recomendado</h2>
+            <div class="result-box" id="result-content">Introduce los datos de la previsión y pulsa el botón.</div>
         </div>
     </div>
 
     <script>
-        const imageInput = document.getElementById('image-input');
-        const fileNameSpan = document.getElementById('file-name');
         const generateBtn = document.getElementById('generate-btn');
         const resultContent = document.getElementById('result-content');
 
-        let base64Image = null;
-        let imageMimeType = "image/jpeg";
+        generateBtn.addEventListener('click', () => {
+            const wind = parseFloat(document.getElementById('wind-knots').value) || 0;
+            const waves = parseFloat(document.getElementById('wave-height').value) || 0;
 
-        // Compresión y redimensionado automático de imagen para máxima velocidad
-        imageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                fileNameSpan.textContent = "Optimizando imagen...";
-                imageMimeType = "image/jpeg";
-                
-                const reader = new FileReader();
-                reader.onload = function(uploadEvent) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
-                        const maxDim = 1000; // Límite de tamaño para agilizar la red y el análisis
+            // Lógica determinista basada en tus criterios de material
+            let selectedBoard = "";
+            let selectedWing = "";
+            let selectedFoil = "";
 
-                        if (width > maxDim || height > maxDim) {
-                            if (width > height) {
-                                height = Math.round((height * maxDim) / width);
-                                width = maxDim;
-                            } else {
-                                width = Math.round((width * maxDim) / height);
-                                height = maxDim;
-                            }
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-
-                        // Convertir a JPEG comprimido (calidad 0.8)
-                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                        base64Image = dataUrl.split(',')[1];
-                        fileNameSpan.textContent = file.name + " (Optimizada)";
-                    };
-                    img.src = uploadEvent.target.result;
-                };
-                reader.readAsDataURL(file);
+            // 1. Selección de Tabla (Umbral de 16 nudos)
+            if (wind >= 16) {
+                selectedBoard = "Mint 75L";
             } else {
-                fileNameSpan.textContent = "Ningún archivo seleccionado";
-                base64Image = null;
-            }
-        });
-
-        generateBtn.addEventListener('click', async () => {
-            const weight = document.getElementById('weight').value;
-            const level = document.getElementById('level').value;
-            const spot = document.getElementById('spot').value;
-            const boards = document.getElementById('boards').value;
-            const wings = document.getElementById('wings').value;
-            const foils = document.getElementById('foils').value;
-
-            if (!base64Image) {
-                resultContent.textContent = "❌ Por favor, selecciona una captura de pantalla de la previsión.";
-                return;
+                selectedBoard = "Cruzader 122L";
             }
 
-            resultContent.textContent = "🔄 Analizando la previsión meteorológica y tu arsenal con Inteligencia Artificial...";
-
-            const userPrompt = `Analiza la previsión meteorológica de la imagen adjunta para el spot de ${spot}. Mi peso es ${weight} kg, nivel ${level}. Mi arsenal disponible es: Tablas: ${boards}; Velas: ${wings}; Foils: ${foils}. 
-            
-            Responde exclusivamente con el material exacto que debo montar (Tabla, Vela y Foil) en formato de lista corta, sin explicaciones ni textos adicionales.`;
-
-            const payload = {
-                contents: [
-                    {
-                        parts: [
-                            { text: userPrompt },
-                            {
-                                inline_data: {
-                                    mime_type: imageMimeType,
-                                    data: base64Image
-                                }
-                            }
-                        ]
-                    }
-                ]
-            };
-
-            try {
-                const workerUrl = "https://wingadviser.ganexito-077.workers.dev";
-
-                const response = await fetch(workerUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await response.json();
-
-                if (data.error) {
-                    resultContent.textContent = `❌ Error devuelto: ${data.error}`;
-                    return;
-                }
-
-                if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                    const textResponse = data.candidates[0].content.parts.map(p => p.text).join('');
-                    resultContent.textContent = textResponse;
-                } else {
-                    resultContent.textContent = "❌ Formato de respuesta inesperado del servidor.";
-                }
-
-            } catch (err) {
-                resultContent.textContent = `❌ Error de conexión: ${err.message}`;
+            // 2. Selección de Vela / Parawing según intensidad de viento
+            if (wind >= 25) {
+                selectedWing = "Parawing 4m";
+            } else if (wind >= 18) {
+                selectedWing = "Parawing 4m o 5m";
+            } else if (wind >= 14) {
+                selectedWing = "Parawing 5m";
+            } else {
+                selectedWing = "Wing 6m";
             }
+
+            // 3. Selección de Hydrofoil según presencia de olas y viento
+            if (waves >= 1.2 && wind >= 18) {
+                selectedFoil = "Foil 900";
+            } else if (waves >= 0.8) {
+                selectedFoil = "Foil 1200";
+            } else {
+                selectedFoil = "Foil 1700";
+            }
+
+            // Mostrar resultado limpio, corto y directo
+            resultContent.innerHTML = `
+                • <strong>Tabla:</strong> ${selectedBoard}<br>
+                • <strong>Vela:</strong> ${selectedWing}<br>
+                • <strong>Foil:</strong> ${selectedFoil}
+            `;
         });
     </script>
 </body>
