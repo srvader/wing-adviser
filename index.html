@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wingfoil Advisor (Modo Local)</title>
+    <title>Wingfoil Advisor (Modo Local Inteligente)</title>
     <style>
         :root {
             --bg-color: #0b131e;
@@ -131,7 +131,7 @@
     <div class="container">
         <header>
             <h1>WINGFOIL ADVISOR</h1>
-            <p>Selector de Material Local</p>
+            <p>Selector Inteligente por Reglas</p>
         </header>
 
         <div class="card">
@@ -139,7 +139,7 @@
             <div class="row">
                 <div class="form-group">
                     <label for="weight">Peso (kg)</label>
-                    <input type="number" id="weight" value="85">
+                    <input type="number" id="weight" value="">
                 </div>
                 <div class="form-group">
                     <label for="level">Nivel</label>
@@ -158,11 +158,11 @@
             <div class="row">
                 <div class="form-group">
                     <label for="wind-knots">Viento medio (nudos)</label>
-                    <input type="number" id="wind-knots" value="20" placeholder="Ej. 20">
+                    <input type="number" id="wind-knots" value="">
                 </div>
                 <div class="form-group">
                     <label for="wave-height">Olas / Swell (metros)</label>
-                    <input type="number" step="0.1" id="wave-height" value="1.5" placeholder="Ej. 1.5">
+                    <input type="number" step="0.1" id="wave-height" value="">
                 </div>
             </div>
         </div>
@@ -170,16 +170,16 @@
         <div class="card">
             <h2>3. Tu Arsenal</h2>
             <div class="form-group">
-                <label for="boards">Tablas (ej: Cruzader 122L, Mint 75L)</label>
-                <input type="text" id="boards" value="Cruzader 122L, Mint 75L">
+                <label for="boards">Tablas</label>
+                <input type="text" id="boards" value="">
             </div>
             <div class="form-group">
-                <label for="wings">Velas (ej: Parawing 4m, Parawing 5m, Wing 6m)</label>
-                <input type="text" id="wings" value="Parawing 4m, Parawing 5m, Wing 6m">
+                <label for="wings">Velas</label>
+                <input type="text" id="wings" value="">
             </div>
             <div class="form-group">
-                <label for="foils">Foils (ej: Foil 900, Foil 1200, Foil 1700)</label>
-                <input type="text" id="foils" value="Foil 900, Foil 1200, Foil 1700">
+                <label for="foils">Foils</label>
+                <input type="text" id="foils" value="">
             </div>
             
             <button class="btn-primary" id="generate-btn">Obtener Setup Óptimo</button>
@@ -187,7 +187,7 @@
 
         <div class="card">
             <h2>Setup Recomendado</h2>
-            <div class="result-box" id="result-content">Introduce los datos y pulsa el botón para ver tu material.</div>
+            <div class="result-box" id="result-content">Introduce tus datos y pulsa el botón.</div>
         </div>
     </div>
 
@@ -197,49 +197,86 @@
 
         generateBtn.addEventListener('click', () => {
             const level = document.getElementById('level').value;
-            const wind = parseFloat(document.getElementById('wind-knots').value) || 0;
-            const waves = parseFloat(document.getElementById('wave-height').value) || 0;
+            const wind = parseFloat(document.getElementById('wind-knots').value);
+            const waves = parseFloat(document.getElementById('wave-height').value);
 
-            // Leer dinámicamente los arsenales introducidos por el usuario separados por comas
-            const boardsInput = document.getElementById('boards').value.split(',').map(s => s.trim()).filter(Boolean);
-            const wingsInput = document.getElementById('wings').value.split(',').map(s => s.trim()).filter(Boolean);
-            const foilsInput = document.getElementById('foils').value.split(',').map(s => s.trim()).filter(Boolean);
+            const boardsStr = document.getElementById('boards').value;
+            const wingsStr = document.getElementById('wings').value;
+            const foilsStr = document.getElementById('foils').value;
 
-            let selectedBoard = boardsInput[0] || "No especificada";
-            let selectedWing = wingsInput[0] || "No especificada";
-            let selectedFoil = foilsInput[0] || "No especificado";
+            if (isNaN(wind) || isNaN(waves) || !boardsStr || !wingsStr || !foilsStr) {
+                resultContent.textContent = "❌ Por favor, rellena todos los campos numéricos y de material.";
+                return;
+            }
 
-            // 1. Selección de Tabla: Básico usa la primera (larga). Intermedio/Avanzado/Experto usan la segunda (corta) si hay >= 16 nudos y existe
-            if (level !== "Básico" && wind >= 16 && boardsInput.length > 1) {
-                selectedBoard = boardsInput[1]; // Asume que la segunda es la corta
+            // 1. Análisis inteligente de Tablas (extrae litros 'L' y ordena de menor a mayor volumen)
+            let boards = boardsStr.split(',').map(item => {
+                const text = item.trim();
+                const match = text.match(/(\d+)\s*[lL]/);
+                const val = match ? parseInt(match[1]) : 0;
+                return { text, val };
+            }).filter(b => b.text);
+
+            boards.sort((a, b) => a.val - b.val);
+
+            let selectedBoard = boards[boards.length - 1].text;
+            if (level === "Básico") {
+                selectedBoard = boards[boards.length - 1].text;
             } else {
-                selectedBoard = boardsInput[0] || "Tabla única";
+                if (wind >= 16 && boards.length > 1) {
+                    selectedBoard = boards[0].text; // Tabla corta
+                } else {
+                    selectedBoard = boards[boards.length - 1].text; // Tabla grande
+                }
             }
 
-            // 2. Selección de Vela / Parawing según Viento en base a su propia lista
-            if (wingsInput.length > 0) {
-                if (wind >= 25 && wingsInput.length >= 1) {
-                    selectedWing = wingsInput[0]; // La más pequeña/baja de la lista
+            // 2. Análisis inteligente de Velas (extrae metros 'm' y ordena de menor a mayor tamaño)
+            let wings = wingsStr.split(',').map(item => {
+                const text = item.trim();
+                const match = text.match(/(\d+(?:\.\d+)?)\s*m/i);
+                const val = match ? parseFloat(match[1]) : 0;
+                return { text, val };
+            }).filter(w => w.text);
+
+            wings.sort((a, b) => a.val - b.val);
+
+            let selectedWing = wings[wings.length - 1].text;
+            if (wings.length > 0) {
+                if (wind > 25) {
+                    selectedWing = wings[0].text;
                 } else if (wind >= 15) {
-                    selectedWing = wingsInput[Math.min(1, wingsInput.length - 1)];
+                    let idx = Math.floor(wings.length / 3);
+                    selectedWing = wings[idx].text;
+                } else if (wind >= 10) {
+                    let idx = Math.min(wings.length - 1, Math.floor(wings.length / 2));
+                    selectedWing = wings[idx].text;
                 } else {
-                    selectedWing = wingsInput[wingsInput.length - 1]; // La más grande para viento flojo
+                    selectedWing = wings[wings.length - 1].text;
                 }
             }
 
-            // 3. Selección de Hydrofoil según Nivel, Olas y su lista de foils
-            if (foilsInput.length > 0) {
+            // 3. Análisis inteligente de Foils (extrae números y ordena de menor a mayor superficie cm²)
+            let foils = foilsStr.split(',').map(item => {
+                const text = item.trim();
+                const match = text.match(/(\d+)/);
+                const val = match ? parseInt(match[1]) : 0;
+                return { text, val };
+            }).filter(f => f.text);
+
+            foils.sort((a, b) => a.val - b.val);
+
+            let selectedFoil = foils[foils.length - 1].text;
+            if (foils.length > 0) {
                 if (level === "Básico") {
-                    selectedFoil = foilsInput[foilsInput.length - 1]; // El más grande / sustentador
+                    selectedFoil = foils[foils.length - 1].text;
                 } else if ((level === "Avanzado" || level === "Experto") && waves >= 1.2 && wind >= 18) {
-                    selectedFoil = foilsInput[0]; // El más pequeño / rápido
+                    selectedFoil = foils[0].text;
                 } else {
-                    const midIndex = Math.floor(foilsInput.length / 2);
-                    selectedFoil = foilsInput[midIndex] || foilsInput[0];
+                    let midIdx = Math.min(foils.length - 1, Math.floor(foils.length / 2));
+                    selectedFoil = foils[midIdx].text;
                 }
             }
 
-            // Resultado dinámico, limpio y corto
             resultContent.innerHTML = `
                 • <strong>Tabla:</strong> ${selectedBoard}<br>
                 • <strong>Vela:</strong> ${selectedWing}<br>
