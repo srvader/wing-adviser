@@ -91,9 +91,14 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent-col
       <div class="hint">Rellena uno o los dos campos. Deja vacío el que no tengas.</div>
     </div>
     <div class="form-group">
-      <label for="wings">Velas (m²)</label>
+      <label for="wings">Velas wing (m²)</label>
       <input type="text" id="wings" placeholder="Ej: 4; 5; 5,5; 6,5">
       <div class="hint">Solo los metros, sin marca. Admite coma o punto decimal (5,5) y separa con espacio, ";", "-", "/" o "y".</div>
+    </div>
+    <div class="form-group">
+      <label for="parawings">Parawings (m²)</label>
+      <input type="text" id="parawings" placeholder="Ej: 4; 5">
+      <div class="hint">Opcional. Se prefieren con olas de 0,5 m o más y 14 nudos o más.</div>
     </div>
     <div class="form-group">
       <label>Foils</label>
@@ -135,7 +140,7 @@ $('add-foil').addEventListener('click', () => { addFoilRow(); saveState(); });
 
 // ---- Guardado local: los datos se conservan hasta que se borren los datos del sitio ----
 const STORE_KEY = 'wingfoil-advisor-v1';
-const FIELDS = ['weight', 'level', 'wind-knots', 'wave-height', 'boards', 'boards-mid', 'wings'];
+const FIELDS = ['weight', 'level', 'wind-knots', 'wave-height', 'boards', 'boards-mid', 'wings', 'parawings'];
 
 function saveState() {
   try {
@@ -262,7 +267,12 @@ $('generate-btn').addEventListener('click', () => {
     ...tag(parseGear($('boards').value, boardUnit, 20, 300, false, ignored), false),
     ...tag(parseGear($('boards-mid').value, boardUnit, 20, 300, false, ignored), true)
   ];
-  const wings = parseGear($('wings').value, wingUnit, 1.5, 14, true, ignored);
+  // un parawing de tamaño X equivale a un wing ~10 % menor
+  const PARA = 1.1;
+  const tagW = (arr, para) => arr.map(w => ({ ...w, para, eff: para ? w.val / PARA : w.val }));
+  const wingsOnly = tagW(parseGear($('wings').value, wingUnit, 1.5, 14, true, ignored), false);
+  const parasOnly = tagW(parseGear($('parawings').value, wingUnit, 1.5, 14, true, ignored), true);
+  const wings = [...wingsOnly, ...parasOnly];
   // si tras quitar números, unidades y separadores queda texto, el rider ha escrito marca o modelo
   const wingHasBrand = wings.some(w => w.text.replace(NUM_UNIT, '').replace(/[\s.,;\-–\/+]|\by\b/gi, '') !== '');
   const foils = [...foilList.querySelectorAll('.foil')].map((row, i) => {
@@ -270,12 +280,12 @@ $('generate-btn').addEventListener('click', () => {
     const val = parseFloat(row.querySelector('.f-area').value);
     const arRaw = parseFloat(row.querySelector('.f-ar').value);
     const ar = isNaN(arRaw) ? null : Math.min(14, Math.max(4, arRaw));
-    // base AR 9: cada punto de más (menos) suma (resta) ~5 % de área efectiva
-    return { text: `${name || 'Foil ' + (i + 1)} ${fmt(val, 0)} cm²`, val, ar, eff: val * (1 + 0.05 * ((ar || 9) - 9)) };
+    // base AR 9: cada punto de más (menos) suma (resta) ~3 % de área efectiva
+    return { text: `${name || 'Foil ' + (i + 1)} ${fmt(val, 0)} cm²`, val, ar, eff: val * (1 + 0.03 * ((ar || 9) - 9)) };
   }).filter(f => f.val >= 100 && f.val <= 4000);
 
   if (!boards.length) return showError('No encuentro ninguna tabla válida (entre 20 y 300 L). Ejemplo: 70L; 110L.');
-  if (!wings.length)  return showError('No encuentro ninguna vela válida (entre 1,5 y 14 m). Ejemplo: 4; 5,5; 6.');
+  if (!wings.length)  return showError('No encuentro ninguna vela ni parawing válido (entre 1,5 y 14 m). Ejemplo: 4; 5,5; 6.');
   if (!foils.length)  return showError('Añade al menos un foil con su superficie en cm² (entre 100 y 4000).');
 
   const lvlIdx = ['Básico', 'Intermedio', 'Avanzado', 'Experto'].indexOf(level);
@@ -283,21 +293,31 @@ $('generate-btn').addEventListener('click', () => {
 
   const preferLarger = lvlIdx < 2;
 
+  // factor continuo por viento (1 con 15 nudos; más grande con poco viento, más pequeño con mucho)
+  const windFactor = p => Math.min(1.5, Math.max(0.7, Math.pow(15 / Math.max(wind, 5), p)));
+  const lowWind = wind <= [18, 16, 14, 12][lvlIdx]; // hasta ese viento una midlength despega antes
+
   // ---- Tabla (primero: su tipo condiciona vela y foil) ----
   const boardBase = [weight + 40, weight + 15, weight * 0.85, weight * 0.65][lvlIdx];
-  const idealBoard = boardBase * (wind < 12 ? 1.15 : wind >= 20 ? 0.9 : 1) * (heavySea ? 0.9 : 1);
-  const board = nearest(boards, idealBoard, preferLarger);
-  const earlyTakeoff = board.mid ? 0.9 : 1; // con midlength se puede bajar un 10 % vela y foil
+  const idealBoard = boardBase * windFactor(0.5) * (heavySea ? 0.9 : 1);
+  // con viento flojo la midlength despega antes: si tienes una, se elige entre las midlength
+  const midBoards = boards.filter(b => b.mid);
+  const board = nearest(lowWind && midBoards.length ? midBoards : boards, idealBoard, preferLarger);
 
   // ---- Vela: m² ≈ peso × 0,09 / (viento / 10), ajustada por nivel ----
-  const wingLevel = [1.15, 1, 0.95, 0.9][lvlIdx];
-  const idealWing = Math.max(2, (weight * 0.09 / (Math.max(wind, 6) / 10)) * wingLevel * earlyTakeoff);
-  const wing = nearest(wings, idealWing, preferLarger);
+  const wingLevel = [1.15, 1, 0.93, 0.9][lvlIdx];
+  const idealWing = Math.max(2, (weight * 0.09 / (Math.max(wind, 6) / 10)) * wingLevel);
+  // con olas y viento suficiente se prefiere parawing; si no, wing. Si falta ese tipo se usa el otro.
+  const preferPara = waves >= 0.5 && wind >= 14;
+  let wingPool = preferPara ? parasOnly : wingsOnly;
+  const wingFallback = !wingPool.length;
+  if (wingFallback) wingPool = wings;
+  const wing = nearest(wingPool, idealWing, preferLarger && wind < 16);
 
   // ---- Foil: cm² ideales según peso, nivel, viento y olas ----
-  const foilK = [24, 12, 10, 8][lvlIdx];
-  let idealFoil = weight * foilK * earlyTakeoff;
-  idealFoil *= wind < 12 ? 1.25 : wind >= 25 ? 0.75 : wind >= 20 ? 0.85 : 1;
+  const foilK = [28, 15.4, 14, 11][lvlIdx];
+  let idealFoil = weight * foilK;
+  idealFoil *= windFactor(0.37);
   if (heavySea) idealFoil *= 0.9;
   const foil = nearest(foils, idealFoil, preferLarger);
 
@@ -308,8 +328,9 @@ $('generate-btn').addEventListener('click', () => {
   else if (wind < 10) warns.push('Viento justo: necesitarás bombeo y una vela grande.');
   if (wind > 30) warns.push('Más de 30 nudos: condiciones extremas, valora no salir.');
   if (waves >= 2 && lvlIdx < 3) warns.push('Con olas de 2 m o más, extrema la precaución a tu nivel.');
-  if (gap(wing.val, idealWing)) warns.push(`Tu vela más cercana (${fmt(wing.val)} m) se aleja del ideal (~${fmt(idealWing)} m).`);
-  if (gap(board.eff, idealBoard)) warns.push(`Tu tabla más cercana (${fmt(board.val, 0)} L${board.mid ? ', midlength' : ''}) se aleja del ideal (~${fmt(idealBoard, 0)} L).`);
+  if (gap(wing.eff, idealWing)) warns.push(`Tu ${wing.para ? 'parawing' : 'vela'} más cercano (${fmt(wing.val)} m) se aleja del ideal (~${fmt(idealWing)} m).`);
+  if (wingFallback && !preferPara && wing.para) warns.push('No tienes wings: he usado un parawing.');
+  if (!board.mid && gap(board.eff, idealBoard)) warns.push(`Tu tabla más cercana (${fmt(board.val, 0)} L${board.mid ? ', midlength' : ''}) se aleja del ideal (~${fmt(idealBoard, 0)} L).`);
   if (gap(foil.eff, idealFoil)) warns.push(`Tu foil más cercano (${fmt(foil.eff, 0)} cm² efectivos) se aleja del ideal (~${fmt(idealFoil, 0)} cm²).`);
 
   if (foil.ar && foil.ar >= 10 && lvlIdx === 0) warns.push('Foil de AR alto: muy eficiente pero exigente para tu nivel; mejor uno de AR bajo o medio.');
@@ -319,11 +340,11 @@ $('generate-btn').addEventListener('click', () => {
   if (wingHasBrand) warns.push('No hace falta escribir la marca ni el modelo de la vela: bastan los metros (ej. 4; 5,5; 6).');
   if (ignored.length) warns.push(`He ignorado: ${ignored.join(', ')} (no es un valor válido o está fuera de rango).`);
   out.innerHTML =
-    `<div class="item">• <strong>Tabla:</strong> ${esc(board.text)}${board.mid ? ' (midlength)' : ''}<span class="why">Ideal ≈ ${fmt(idealBoard, 0)} L${board.mid ? ' · despega antes: vela y foil un 10 % menores' : ''}</span></div>` +
-    `<div class="item">• <strong>Vela:</strong> ${esc(wing.text)}<span class="why">Ideal ≈ ${fmt(idealWing)} m² (${fmt(weight, 0)} kg, ${fmt(wind, 0)} nudos)</span></div>` +
+    `<div class="item">• <strong>Tabla:</strong> ${esc(board.text)}${board.mid ? ' (midlength)' : ''}<span class="why">Ideal ≈ ${fmt(idealBoard, 0)} L${board.mid ? (lowWind ? ' · viento flojo: la midlength despega antes' : ' · midlength: despega antes') : ''}</span></div>` +
+    `<div class="item">• <strong>${wing.para ? 'Parawing' : 'Vela'}:</strong> ${esc(wing.text)}<span class="why">Ideal ≈ ${fmt(idealWing)} m² (${fmt(weight, 0)} kg, ${fmt(wind, 0)} nudos)${wing.para ? ' · parawing: equivale a ~' + fmt(wing.eff) + ' m² de wing' : ''}${preferPara && wing.para ? ' · hay olas' : ''}</span></div>` +
     `<div class="item">• <strong>Foil:</strong> ${esc(foil.text)}<span class="why">Ideal ≈ ${fmt(idealFoil, 0)} cm²${foil.ar ? ` · AR ${fmt(foil.ar)} ≈ ${fmt(foil.eff, 0)} cm² efectivos` : ' · AR 9 (supuesto)'}</span></div>` +
     warns.map(w => `<p class="warn">⚠️ ${esc(w)}</p>`).join('') +
-    `<p class="hint">Leído → Tablas: ${esc(boards.map(b => fmt(b.val, 0) + ' L' + (b.mid ? ' mid' : '')).join(' · '))} · Velas: ${esc(wings.map(w => fmt(w.val) + ' m').join(' · '))}</p>`;
+    `<p class="hint">Leído → Tablas: ${esc(boards.map(b => fmt(b.val, 0) + ' L' + (b.mid ? ' mid' : '')).join(' · '))} · Velas: ${esc(wings.map(w => fmt(w.val) + ' m' + (w.para ? ' para' : '')).join(' · '))}</p>`;
 });
 </script>
 </body>
