@@ -83,7 +83,7 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent-col
     <div class="form-group">
       <label for="wings">Velas (m²)</label>
       <input type="text" id="wings" placeholder="Ej: 4; 5; 5,5; 6,5">
-      <div class="hint">Admite decimales con coma (5,5). Separa con punto y coma, "/" o "y".</div>
+      <div class="hint">Admite decimales con coma (5,5). Separa con ";", "-", "/" o "y".</div>
     </div>
     <div class="form-group">
       <label for="foils">Foils (cm² del ala frontal)</label>
@@ -106,12 +106,14 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 const fmt = (n, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toString().replace('.', ',');
 
 // Separa la lista respetando la coma decimal: "5,5" es un número; "5, 6" son dos.
+// También separa con guion entre números ("4-5,5-6") y con espacios si solo hay números.
 function parseList(str) {
-  return str
-    .replace(/(\d),(\d)/g, '$1.$2')
-    .replace(/\s+y\s+/gi, ';')
+  let t = str.replace(/(\d),(\d)/g, '$1.$2').replace(/\s+y\s+/gi, ';');
+  if (/^[\d.\s]+$/.test(t)) t = t.trim().replace(/\s+/g, ';');
+  return t
+    .replace(/(?<=[\d.])\s*[-–]\s*(?=\d)/g, ';')
     .split(/[;,+\/\n]/)
-    .map(s => s.trim())
+    .map(x => x.trim())
     .filter(Boolean);
 }
 
@@ -185,12 +187,12 @@ $('generate-btn').addEventListener('click', () => {
   const earlyTakeoff = board.mid ? 0.9 : 1; // con midlength se puede bajar un 10 % vela y foil
 
   // ---- Vela: m² ≈ peso × 0,09 / (viento / 10), ajustada por nivel ----
-  const wingLevel = [1.2, 1.1, 1, 0.92][lvlIdx];
+  const wingLevel = [1.15, 1, 0.95, 0.9][lvlIdx];
   const idealWing = Math.max(2, (weight * 0.09 / (Math.max(wind, 6) / 10)) * wingLevel * earlyTakeoff);
   const wing = nearest(wings, idealWing, preferLarger);
 
   // ---- Foil: cm² ideales según peso, nivel, viento y olas ----
-  const foilK = [26, 20, 14, 11][lvlIdx];
+  const foilK = [24, 12, 10, 8][lvlIdx];
   let idealFoil = weight * foilK * earlyTakeoff;
   idealFoil *= wind < 12 ? 1.25 : wind >= 25 ? 0.75 : wind >= 20 ? 0.85 : 1;
   if (heavySea) idealFoil *= 0.9;
