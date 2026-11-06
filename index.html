@@ -98,6 +98,7 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent-col
       <div class="hint">Indica la superficie en cm². El cálculo asume foils de AR 9: si el tuyo es distinto, rellena su aspect ratio.</div>
     </div>
     <button class="btn-primary" id="generate-btn">Obtener setup óptimo</button>
+    <div class="hint" style="text-align:center;margin-top:10px">Tus datos se guardan en este dispositivo.</div>
   </div>
 
   <div class="card">
@@ -111,19 +112,57 @@ const $ = id => document.getElementById(id);
 const out = $('result-content');
 const foilList = $('foil-list');
 
-function addFoilRow() {
+function addFoilRow(data = {}) {
   const d = document.createElement('div');
   d.className = 'foil';
   d.innerHTML = '<div class="foil-top"><input type="text" class="f-name" placeholder="Nombre (ej. Veloce H)" aria-label="Nombre del foil"><button type="button" class="btn-x" aria-label="Quitar foil">✕</button></div>' +
     '<div class="foil-nums"><input type="number" class="f-area" inputmode="decimal" placeholder="cm² (ej. 1200)" aria-label="Superficie en cm²"><input type="number" step="0.1" class="f-ar" inputmode="decimal" placeholder="AR (9 por defecto)" aria-label="Aspect ratio"></div>';
+  d.querySelector('.f-name').value = data.name || '';
+  d.querySelector('.f-area').value = data.area || '';
+  d.querySelector('.f-ar').value = data.ar || '';
   d.querySelector('.btn-x').addEventListener('click', () => {
     if (foilList.children.length > 1) d.remove();
     else d.querySelectorAll('input').forEach(i => { i.value = ''; });
+    saveState();
   });
   foilList.appendChild(d);
 }
-$('add-foil').addEventListener('click', addFoilRow);
-addFoilRow();
+$('add-foil').addEventListener('click', () => { addFoilRow(); saveState(); });
+
+// ---- Guardado local: los datos se conservan hasta que se borren los datos del sitio ----
+const STORE_KEY = 'wingfoil-advisor-v1';
+const FIELDS = ['weight', 'level', 'wind-knots', 'wave-height', 'boards', 'boards-mid', 'wings'];
+
+function saveState() {
+  try {
+    const data = {};
+    FIELDS.forEach(id => { data[id] = $(id).value; });
+    data.foils = [...foilList.querySelectorAll('.foil')].map(r => ({
+      name: r.querySelector('.f-name').value,
+      area: r.querySelector('.f-area').value,
+      ar: r.querySelector('.f-ar').value
+    }));
+    localStorage.setItem(STORE_KEY, JSON.stringify(data));
+  } catch (e) { /* almacenamiento no disponible: la página sigue funcionando */ }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    FIELDS.forEach(id => {
+      if (id === 'level' && !['Básico', 'Intermedio', 'Avanzado', 'Experto'].includes(data[id])) return;
+      if (typeof data[id] === 'string') $(id).value = data[id];
+    });
+    (Array.isArray(data.foils) ? data.foils : []).forEach(f => addFoilRow(f || {}));
+  } catch (e) { /* datos corruptos: se ignoran */ }
+  return foilList.children.length > 0;
+}
+
+if (!loadState()) addFoilRow();
+document.addEventListener('input', saveState);
+document.addEventListener('change', saveState);
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = (n, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toString().replace('.', ',');
@@ -174,6 +213,7 @@ function showError(msg) {
 }
 
 $('generate-btn').addEventListener('click', () => {
+  saveState();
   const level = $('level').value;
   const weight = parseFloat($('weight').value);
   const wind = parseFloat($('wind-knots').value);
