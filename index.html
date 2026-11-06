@@ -215,15 +215,43 @@
         let base64Image = null;
         let imageMimeType = "image/jpeg";
 
+        // Compresión y redimensionado automático de imagen para máxima velocidad
         imageInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
-                fileNameSpan.textContent = file.name;
-                imageMimeType = file.type || "image/jpeg";
+                fileNameSpan.textContent = "Optimizando imagen...";
+                imageMimeType = "image/jpeg";
+                
                 const reader = new FileReader();
                 reader.onload = function(uploadEvent) {
-                    // Extraer solo los datos base64 eliminando el prefijo data:*/*;base64,
-                    base64Image = uploadEvent.target.result.split(',')[1];
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const maxDim = 1000; // Límite de tamaño para agilizar la red y el análisis
+
+                        if (width > maxDim || height > maxDim) {
+                            if (width > height) {
+                                height = Math.round((height * maxDim) / width);
+                                width = maxDim;
+                            } else {
+                                width = Math.round((width * maxDim) / height);
+                                height = maxDim;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Convertir a JPEG comprimido (calidad 0.8)
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        base64Image = dataUrl.split(',')[1];
+                        fileNameSpan.textContent = file.name + " (Optimizada)";
+                    };
+                    img.src = uploadEvent.target.result;
                 };
                 reader.readAsDataURL(file);
             } else {
@@ -247,7 +275,6 @@
 
             resultContent.textContent = "🔄 Analizando la previsión meteorológica y tu arsenal con Inteligencia Artificial...";
 
-            // Instrucción estricta para respuesta corta centrada solo en el material
             const userPrompt = `Analiza la previsión meteorológica de la imagen adjunta para el spot de ${spot}. Mi peso es ${weight} kg, nivel ${level}. Mi arsenal disponible es: Tablas: ${boards}; Velas: ${wings}; Foils: ${foils}. 
             
             Responde exclusivamente con el material exacto que debo montar (Tabla, Vela y Foil) en formato de lista corta, sin explicaciones ni textos adicionales.`;
@@ -269,7 +296,6 @@
             };
 
             try {
-                // URL de tu Cloudflare Worker
                 const workerUrl = "https://wingadviser.ganexito-077.workers.dev";
 
                 const response = await fetch(workerUrl, {
