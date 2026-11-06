@@ -3,170 +3,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wingfoil Setup Advisor AI</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0284c7">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Wingfoil Advisor</title>
+    <style>
+        :root {
+            --bg-color: #0b131e;
+            --card-bg: #132235;
+            --accent-color: #0099ff;
+            --text-color: #ffffff;
+            --text-muted: #8ca0b3;
+            --border-color: #1e3552;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        header h1 {
+            color: var(--accent-color);
+            font-size: 1.8rem;
+            margin: 0 0 4px 0;
+            letter-spacing: 1px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        h2 {
+            font-size: 1rem;
+            color: var(--accent-color);
+            margin-top: 0;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-btn {
+            display: inline-block;
+            background-color: var(--accent-color);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-align: center;
+            transition: background 0.2s;
+        }
+
+        .file-upload-btn:hover {
+            opacity: 0.9;
+        }
+
+        #file-name {
+            display: block;
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: opacity 0.2s;
+            margin-top: 8px;
+        }
+
+        .btn-primary:active {
+            opacity: 0.8;
+        }
+
+        .result-box {
+            white-space: pre-line;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 pb-12">
-    <div class="max-w-md mx-auto">
-        <header class="text-center my-6">
-            <h1 class="text-2xl font-black text-sky-400 tracking-wider">WINGFOIL ADVISOR</h1>
-            <p class="text-xs text-slate-400">Asistente IA experto en tu material</p>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>WINGFOIL ADVISOR</h1>
+            <p>Asistente IA experto en tu material</p>
         </header>
 
-        <main class="space-y-5 bg-slate-800 p-5 rounded-2xl shadow-xl border border-slate-700">
-            <!-- 1. Perfil del Rider -->
-            <section class="space-y-3">
-                <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">1. Perfil del Rider</h2>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Peso (kg)</label>
-                        <input type="number" id="peso" value="85" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white font-bold focus:outline-none focus:border-sky-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Nivel</label>
-                        <select id="nivel" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white font-bold focus:outline-none focus:border-sky-500">
-                            <option value="basico">Básico</option>
-                            <option value="intermedio">Intermedio</option>
-                            <option value="avanzado" selected>Avanzado</option>
-                            <option value="experto">Experto</option>
-                        </select>
-                    </div>
-                </div>
-            </section>
+        <div class="card">
+            <h2>1. Perfil del Rider</h2>
+            <div class="form-group">
+                <label for="weight">Peso (kg)</label>
+                <input type="number" id="weight" value="85">
+            </div>
+            <div class="form-group">
+                <label for="level">Nivel</label>
+                <select id="level">
+                    <option value="Intermedio">Intermedio</option>
+                    <option value="Avanzado" selected>Avanzado</option>
+                </select>
+            </div>
+        </div>
 
-            <!-- 2. Spot y Previsión -->
-            <section class="space-y-3">
-                <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">2. Spot y Previsión</h2>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Nombre del Spot</label>
-                    <input type="text" id="spot" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Captura de pantalla de la Previsión</label>
-                    <input type="file" id="capturaPrevision" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer">
-                </div>
-            </section>
+        <div class="card">
+            <h2>2. Spot y Previsión</h2>
+            <div class="form-group">
+                <label for="spot">Nombre del Spot</label>
+                <input type="text" id="spot" value="Cortadura">
+            </div>
+            <div class="form-group">
+                <label>Captura de pantalla de la Previsión</label>
+                <label for="image-input" class="file-upload-btn">Seleccionar archivo</label>
+                <input type="file" id="image-input" accept="image/*">
+                <span id="file-name">Ningún archivo seleccionado</span>
+            </div>
+        </div>
 
-            <!-- 3. Arsenal Completo -->
-            <section class="space-y-3">
-                <h2 class="text-sm font-bold text-sky-300 uppercase tracking-wide">3. Tu Arsenal Completo</h2>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Tablas (Modelos y litros)</label>
-                    <input type="text" id="tablas" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Velas (Wings o Parawings)</label>
-                    <input type="text" id="velas" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Foils (Modelos y tamaños)</label>
-                    <input type="text" id="foils" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-sky-500">
-                </div>
-            </section>
+        <div class="card">
+            <h2>3. Tu Arsenal Completo</h2>
+            <div class="form-group">
+                <label for="boards">Tablas (Modelos y litros)</label>
+                <input type="text" id="boards" value="cruzader 122l mint 75l">
+            </div>
+            <div class="form-group">
+                <label for="wings">Velas (Wings o Parawings)</label>
+                <input type="text" id="wings" value="parawing 4 y 5m y wing 6m">
+            </div>
+            <div class="form-group">
+                <label for="foils">Foils (Modelos y tamaños)</label>
+                <input type="text" id="foils" value="900, 1200 y 1700">
+            </div>
+            
+            <button class="btn-primary" id="generate-btn">Generar Recomendación IA</button>
+        </div>
 
-            <button onclick="consultarIA()" id="btnGenerar" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-3 rounded-xl transition shadow-lg shadow-sky-500/20 uppercase tracking-wide">
-                Generar Recomendación IA
-            </button>
-        </main>
-
-        <!-- Resultado -->
-        <div id="resultado" class="mt-6 hidden bg-sky-950/80 border border-sky-500/50 p-5 rounded-2xl shadow-xl space-y-2">
-            <h3 class="text-sm font-bold text-sky-400 uppercase tracking-wider">Recomendación del Asistente IA</h3>
-            <div id="textoRecomendacion" class="text-sm text-slate-200 space-y-2"></div>
+        <div class="card">
+            <h2>Recomendación del Asistente IA</h2>
+            <div class="result-box" id="result-content">Pulsa el botón para obtener tu setup óptimo.</div>
         </div>
     </div>
 
     <script>
-        async function consultarIA() {
-            const peso = document.getElementById('peso').value;
-            const nivel = document.getElementById('nivel').value;
-            const spot = document.getElementById('spot').value || "un spot local";
-            const tablas = document.getElementById('tablas').value;
-            const velas = document.getElementById('velas').value;
-            const foils = document.getElementById('foils').value;
-            const fileInput = document.getElementById('capturaPrevision');
+        const imageInput = document.getElementById('image-input');
+        const fileNameSpan = document.getElementById('file-name');
+        const generateBtn = document.getElementById('generate-btn');
+        const resultContent = document.getElementById('result-content');
 
-            const resDiv = document.getElementById('resultado');
-            const texto = document.getElementById('textoRecomendacion');
-            const btn = document.getElementById('btnGenerar');
+        let base64Image = null;
+        let imageMimeType = "image/jpeg";
 
-            resDiv.classList.remove('hidden');
-            texto.innerHTML = "🔄 <i>Analizando la previsión meteorológica y tu arsenal con Inteligencia Artificial...</i>";
-            btn.disabled = true;
-
-            let imagePart = null;
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const base64Data = await toBase64(file);
-                imagePart = {
-                    inlineData: {
-                        data: base64Data.split(',')[1],
-                        mimeType: file.type
-                    }
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                fileNameSpan.textContent = file.name;
+                imageMimeType = file.type || "image/jpeg";
+                const reader = new FileReader();
+                reader.onload = function(uploadEvent) {
+                    // Extraer solo los datos base64 eliminando el prefijo data:*/*;base64,
+                    base64Image = uploadEvent.target.result.split(',')[1];
                 };
+                reader.readAsDataURL(file);
+            } else {
+                fileNameSpan.textContent = "Ningún archivo seleccionado";
+                base64Image = null;
+            }
+        });
+
+        generateBtn.addEventListener('click', async () => {
+            const weight = document.getElementById('weight').value;
+            const level = document.getElementById('level').value;
+            const spot = document.getElementById('spot').value;
+            const boards = document.getElementById('boards').value;
+            const wings = document.getElementById('wings').value;
+            const foils = document.getElementById('foils').value;
+
+            if (!base64Image) {
+                resultContent.textContent = "❌ Por favor, selecciona una captura de pantalla de la previsión.";
+                return;
             }
 
-            const promptText = `Actúa como un experto mundial y técnico especialista en Wingfoil. 
-            Datos del rider:
-            - Peso: ${peso} kg
-            - Nivel: ${nivel}
-            - Spot de navegación: ${spot}
-            
-            Su inventario disponible de material es:
-            - Tablas: ${tablas}
-            - Velas / Wings / Parawings: ${velas}
-            - Foils: ${foils}
-            
-            Analiza la captura de pantalla de la previsión de viento y olas adjunta. 
-            Reglas técnicas a aplicar:
-            1. A partir de 16 nudos de viento medio, si dispone de tabla corta y mid-length, recomienda firmemente la tabla corta. Con menos de 16 nudos, prioriza la de mayor volumen.
-            2. Si hay condiciones de olas formadas y buen viento, selecciona el foil más pequeño y rápido disponible en su inventario para ganar control en las bajadas.
-            3. Selecciona la vela o wing con el metraje adecuado al viento observado.
-            
-            Responde de forma directa, clara, estructurada y en español, indicando exactamente:
-            - 🏄‍♂️ Tabla recomendada y por qué.
-            - 💨 Vela/Wing recomendada y por qué.
-            - ✈️ Hydrofoil recomendado y por qué.`;
+            resultContent.textContent = "🔄 Analizando la previsión meteorológica y tu arsenal con Inteligencia Artificial...";
 
-            const contents = [promptText];
-            if (imagePart) contents.push(imagePart);
+            // Instrucción estricta para respuesta corta centrada solo en el material
+            const userPrompt = `Analiza la previsión meteorológica de la imagen adjunta para el spot de ${spot}. Mi peso es ${weight} kg, nivel ${level}. Mi arsenal disponible es: Tablas: ${boards}; Velas: ${wings}; Foils: ${foils}. 
+            
+            Responde exclusivamente con el material exacto que debo montar (Tabla, Vela y Foil) en formato de lista corta, sin explicaciones ni textos adicionales.`;
+
+            const payload = {
+                contents: [
+                    {
+                        parts: [
+                            { text: userPrompt },
+                            {
+                                inline_data: {
+                                    mime_type: imageMimeType,
+                                    data: base64Image
+                                }
+                            }
+                        ]
+                    }
+                ]
+            };
 
             try {
-                const workerUrl = "https://wingadviser.ganexito-077.workers.dev/"; 
+                // URL de tu Cloudflare Worker
+                const workerUrl = "https://wingadviser.ganexito-077.workers.dev";
 
                 const response = await fetch(workerUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: contents }] })
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
 
                 if (data.error) {
-                    texto.innerHTML = "❌ Error devuelto: " + (typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
-                } else if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-                    let aiText = data.candidates[0].content.parts[0].text;
-                    texto.innerHTML = aiText.replace(/\n/g, '<br>');
-                } else {
-                    texto.innerHTML = "❌ Estructura recibida: <pre style='font-size:10px; color:#cbd5e1; white-space: pre-wrap;'>" + JSON.stringify(data, null, 2) + "</pre>";
+                    resultContent.textContent = `❌ Error devuelto: ${data.error}`;
+                    return;
                 }
-            } catch (error) {
-                texto.innerHTML = "❌ Error de conexión: " + error.message;
-            } finally {
-                btn.disabled = false;
-            }
-        }
 
-        function toBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-            });
-        }
+                if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
+                    const textResponse = data.candidates[0].content.parts.map(p => p.text).join('');
+                    resultContent.textContent = textResponse;
+                } else {
+                    resultContent.textContent = "❌ Formato de respuesta inesperado del servidor.";
+                }
+
+            } catch (err) {
+                resultContent.textContent = `❌ Error de conexión: ${err.message}`;
+            }
+        });
     </script>
 </body>
 </html>
