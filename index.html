@@ -131,7 +131,7 @@
     <div class="container">
         <header>
             <h1>WINGFOIL ADVISOR</h1>
-            <p>Selector de Material Local (Matriz Oficial)</p>
+            <p>Selector de Material Local</p>
         </header>
 
         <div class="card">
@@ -170,15 +170,15 @@
         <div class="card">
             <h2>3. Tu Arsenal</h2>
             <div class="form-group">
-                <label for="boards">Tablas disponibles</label>
+                <label for="boards">Tablas (ej: Cruzader 122L, Mint 75L)</label>
                 <input type="text" id="boards" value="Cruzader 122L, Mint 75L">
             </div>
             <div class="form-group">
-                <label for="wings">Velas disponibles</label>
+                <label for="wings">Velas (ej: Parawing 4m, Parawing 5m, Wing 6m)</label>
                 <input type="text" id="wings" value="Parawing 4m, Parawing 5m, Wing 6m">
             </div>
             <div class="form-group">
-                <label for="foils">Foils disponibles</label>
+                <label for="foils">Foils (ej: Foil 900, Foil 1200, Foil 1700)</label>
                 <input type="text" id="foils" value="Foil 900, Foil 1200, Foil 1700">
             </div>
             
@@ -200,38 +200,46 @@
             const wind = parseFloat(document.getElementById('wind-knots').value) || 0;
             const waves = parseFloat(document.getElementById('wave-height').value) || 0;
 
-            let selectedBoard = "";
-            let selectedWing = "";
-            let selectedFoil = "";
+            // Leer dinámicamente los arsenales introducidos por el usuario separados por comas
+            const boardsInput = document.getElementById('boards').value.split(',').map(s => s.trim()).filter(Boolean);
+            const wingsInput = document.getElementById('wings').value.split(',').map(s => s.trim()).filter(Boolean);
+            const foilsInput = document.getElementById('foils').value.split(',').map(s => s.trim()).filter(Boolean);
 
-            // 1. Selección de Tabla según matriz (Básico usa tabla larga; intermedio/avanzado/experto usan corta a partir de 16 nudos)
-            if (level === "Básico") {
-                selectedBoard = "Cruzader 122L";
+            let selectedBoard = boardsInput[0] || "No especificada";
+            let selectedWing = wingsInput[0] || "No especificada";
+            let selectedFoil = foilsInput[0] || "No especificado";
+
+            // 1. Selección de Tabla: Básico usa la primera (larga). Intermedio/Avanzado/Experto usan la segunda (corta) si hay >= 16 nudos y existe
+            if (level !== "Básico" && wind >= 16 && boardsInput.length > 1) {
+                selectedBoard = boardsInput[1]; // Asume que la segunda es la corta
             } else {
-                selectedBoard = wind >= 16 ? "Mint 75L" : "Cruzader 122L";
+                selectedBoard = boardsInput[0] || "Tabla única";
             }
 
-            // 2. Selección de Vela / Parawing según rangos de viento de la matriz
-            if (wind > 25) {
-                selectedWing = level === "Avanzado" || level === "Experto" ? "Parawing 4m" : "Parawing 4m";
-            } else if (wind >= 15) {
-                selectedWing = wind >= 20 ? "Parawing 4m" : "Parawing 5m";
-            } else if (wind >= 10) {
-                selectedWing = "Parawing 5m";
-            } else {
-                selectedWing = "Wing 6m";
+            // 2. Selección de Vela / Parawing según Viento en base a su propia lista
+            if (wingsInput.length > 0) {
+                if (wind >= 25 && wingsInput.length >= 1) {
+                    selectedWing = wingsInput[0]; // La más pequeña/baja de la lista
+                } else if (wind >= 15) {
+                    selectedWing = wingsInput[Math.min(1, wingsInput.length - 1)];
+                } else {
+                    selectedWing = wingsInput[wingsInput.length - 1]; // La más grande para viento flojo
+                }
             }
 
-            // 3. Selección de Hydrofoil según Nivel y matriz técnica
-            if (level === "Básico") {
-                selectedFoil = "Foil 1700";
-            } else if (level === "Intermedio") {
-                selectedFoil = "Foil 1200";
-            } else { // Avanzado / Experto
-                selectedFoil = (waves >= 1.2 && wind >= 18) ? "Foil 900" : "Foil 1200";
+            // 3. Selección de Hydrofoil según Nivel, Olas y su lista de foils
+            if (foilsInput.length > 0) {
+                if (level === "Básico") {
+                    selectedFoil = foilsInput[foilsInput.length - 1]; // El más grande / sustentador
+                } else if ((level === "Avanzado" || level === "Experto") && waves >= 1.2 && wind >= 18) {
+                    selectedFoil = foilsInput[0]; // El más pequeño / rápido
+                } else {
+                    const midIndex = Math.floor(foilsInput.length / 2);
+                    selectedFoil = foilsInput[midIndex] || foilsInput[0];
+                }
             }
 
-            // Mostrar resultado directo y limpio
+            // Resultado dinámico, limpio y corto
             resultContent.innerHTML = `
                 • <strong>Tabla:</strong> ${selectedBoard}<br>
                 • <strong>Vela:</strong> ${selectedWing}<br>
