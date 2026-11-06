@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wingfoil Advisor</title>
+<style>
+:root{--bg-color:#0b131e;--card-bg:#132235;--accent-color:#0099ff;--text-color:#fff;--text-muted:#8ca0b3;--border-color:#1e3552;--warn:#ffb347}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg-color);color:var(--text-color);margin:0;padding:16px;display:flex;justify-content:center}
+.container{width:100%;max-width:480px}
+header{text-align:center;margin-bottom:24px}
+header h1{color:var(--accent-color);font-size:1.8rem;margin:0 0 4px;letter-spacing:1px}
+header p{color:var(--text-muted);font-size:.9rem;margin:0}
+.card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+h2{font-size:1rem;color:var(--accent-color);margin:0 0 16px;text-transform:uppercase;letter-spacing:.5px}
+.form-group{margin-bottom:16px}
+label{display:block;font-size:.85rem;color:var(--text-muted);margin-bottom:6px}
+input,select{width:100%;padding:10px 12px;background:var(--bg-color);border:1px solid var(--border-color);border-radius:8px;color:var(--text-color);font-size:1rem;box-sizing:border-box}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent-color);outline-offset:1px}
+.row{display:flex;gap:12px}
+.row .form-group{flex:1}
+.hint{font-size:.75rem;color:var(--text-muted);margin-top:4px}
+.btn-primary{width:100%;background:var(--accent-color);color:#fff;border:none;padding:14px;border-radius:8px;font-size:1rem;font-weight:bold;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;transition:opacity .2s;margin-top:8px}
+.btn-primary:active{opacity:.8}
+.result-box{line-height:1.6;font-size:1rem;font-weight:500}
+.item{margin-bottom:12px}
+.why{display:block;font-size:.8rem;font-weight:400;color:var(--text-muted)}
+.warn{color:var(--warn);font-size:.9rem;margin:6px 0 0}
+.err{color:#ff6b6b}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>WINGFOIL ADVISOR</h1>
+    <p>Selector inteligente por reglas</p>
+  </header>
+
+  <div class="card">
+    <h2>1. Perfil del rider</h2>
+    <div class="row">
+      <div class="form-group">
+        <label for="weight">Peso (kg)</label>
+        <input type="number" id="weight" inputmode="decimal" placeholder="80">
+      </div>
+      <div class="form-group">
+        <label for="level">Nivel</label>
+        <select id="level">
+          <option value="Básico">Básico</option>
+          <option value="Intermedio">Intermedio</option>
+          <option value="Avanzado" selected>Avanzado</option>
+          <option value="Experto">Experto</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Condiciones de la previsión</h2>
+    <div class="row">
+      <div class="form-group">
+        <label for="wind-knots">Viento medio (nudos)</label>
+        <input type="number" id="wind-knots" inputmode="decimal" placeholder="18">
+      </div>
+      <div class="form-group">
+        <label for="wave-height">Olas / swell (m)</label>
+        <input type="number" step="0.1" id="wave-height" inputmode="decimal" placeholder="0.5">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Tu arsenal</h2>
+    <div class="form-group">
+      <label for="boards">Tablas (litros)</label>
+      <input type="text" id="boards" placeholder="Ej: 45L; 70L; 110L">
+    </div>
+    <div class="form-group">
+      <label for="wings">Velas (m²)</label>
+      <input type="text" id="wings" placeholder="Ej: 4; 5; 5,5; 6,5">
+      <div class="hint">Admite decimales con coma (5,5). Separa con punto y coma, "/" o "y".</div>
+    </div>
+    <div class="form-group">
+      <label for="foils">Foils (cm² del ala frontal)</label>
+      <input type="text" id="foils" placeholder="Ej: Axis 1000; Gong 1500">
+    </div>
+    <button class="btn-primary" id="generate-btn">Obtener setup óptimo</button>
+  </div>
+
+  <div class="card">
+    <h2>Setup recomendado</h2>
+    <div class="result-box" id="result-content">Introduce tus datos y pulsa el botón.</div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const out = $('result-content');
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (n, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toString().replace('.', ',');
+
+// Separa la lista respetando la coma decimal: "5,5" es un número; "5, 6" son dos.
+function parseList(str) {
+  return str
+    .replace(/(\d),(\d)/g, '$1.$2')
+    .replace(/\s+y\s+/gi, ';')
+    .split(/[;,+\/\n]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+// Extrae un número: prioriza el que lleva unidad; si no, el último número del texto.
+function extract(text, unitRegex, minVal = 0) {
+  const t = text.replace(/(\d),(\d)/g, '$1.$2');
+  if (unitRegex) {
+    const m = t.match(new RegExp('(\\d+(?:\\.\\d+)?)\\s*' + unitRegex, 'i'));
+    if (m) return parseFloat(m[1]);
+  }
+  const nums = (t.match(/\d+(?:\.\d+)?/g) || []).map(parseFloat).filter(n => n >= minVal);
+  return nums.length ? nums[nums.length - 1] : 0;
+}
+
+function parseGear(str, unitRegex, minVal) {
+  return parseList(str)
+    .map(text => ({ text, val: extract(text, unitRegex, minVal) }))
+    .filter(g => g.val > 0)
+    .sort((a, b) => a.val - b.val);
+}
+
+// Elige el elemento más cercano al ideal (distancia relativa; empate -> el mayor)
+function nearest(items, ideal) {
+  let best = items[0], bestD = Infinity;
+  for (const it of items) {
+    const d = Math.abs(Math.log(it.val / ideal));
+    if (d < bestD - 1e-9 || (Math.abs(d - bestD) <= 1e-9 && it.val > best.val)) { best = it; bestD = d; }
+  }
+  return best;
+}
+
+function showError(msg) {
+  out.innerHTML = '<span class="err">❌ ' + esc(msg) + '</span>';
+}
+
+$('generate-btn').addEventListener('click', () => {
+  const level = $('level').value;
+  const weight = parseFloat($('weight').value);
+  const wind = parseFloat($('wind-knots').value);
+  const waves = parseFloat($('wave-height').value);
+
+  if ([weight, wind, waves].some(isNaN)) return showError('Rellena peso, viento y olas (usa 0 si no hay olas).');
+  if (weight < 30 || weight > 200) return showError('El peso debe estar entre 30 y 200 kg.');
+  if (wind < 0 || wind > 60) return showError('El viento debe estar entre 0 y 60 nudos.');
+  if (waves < 0 || waves > 10) return showError('Las olas deben estar entre 0 y 10 m.');
+
+  const boards = parseGear($('boards').value, 'l(?:itros?)?\\b', 20);
+  const wings  = parseGear($('wings').value, 'm(?:ts?|etros?|2|²)?\\b', 0.1);
+  const foils  = parseGear($('foils').value, 'cm', 100);
+
+  if (!boards.length) return showError('No encuentro ninguna tabla. Escribe los litros, por ejemplo: 70L; 110L.');
+  if (!wings.length)  return showError('No encuentro ninguna vela. Escribe los metros, por ejemplo: 4; 5,5; 6.');
+  if (!foils.length)  return showError('No encuentro ningún foil. Escribe la superficie en cm², por ejemplo: Axis 1000.');
+
+  const lvlIdx = ['Básico', 'Intermedio', 'Avanzado', 'Experto'].indexOf(level);
+  const heavySea = waves >= 1.2 && lvlIdx >= 2;
+
+  // ---- Vela: m² ≈ peso × 0,12 / (viento / 10), ajustada por nivel ----
+  const wingLevel = [1.15, 1.05, 1, 0.92][lvlIdx];
+  const idealWing = Math.max(2, (weight * 0.12 / (Math.max(wind, 6) / 10)) * wingLevel);
+  const wing = nearest(wings, idealWing);
+
+  // ---- Tabla: litros ideales según nivel, ajustados por viento y olas ----
+  const boardBase = [weight + 30, weight + 10, weight * 0.75, weight * 0.55][lvlIdx];
+  let idealBoard = boardBase * (wind < 12 ? 1.15 : wind >= 20 ? 0.9 : 1) * (heavySea ? 0.9 : 1);
+  const board = nearest(boards, idealBoard);
+
+  // ---- Foil: cm² ideales según peso, nivel, viento y olas ----
+  const foilK = [28, 22, 17, 13][lvlIdx];
+  let idealFoil = weight * foilK;
+  idealFoil *= wind < 12 ? 1.25 : wind >= 25 ? 0.75 : wind >= 20 ? 0.85 : 1;
+  if (heavySea) idealFoil *= 0.9;
+  const foil = nearest(foils, idealFoil);
+
+  const gap = (real, ideal) => Math.abs(real / ideal - 1) > 0.3;
+
+  const warns = [];
+  if (wind < 8) warns.push('Con menos de 8 nudos es muy difícil despegar; solo con mucha técnica y la vela más grande.');
+  else if (wind < 10) warns.push('Viento justo: necesitarás bombeo y una vela grande.');
+  if (wind > 30) warns.push('Más de 30 nudos: condiciones extremas, valora no salir.');
+  if (waves >= 2 && lvlIdx < 3) warns.push('Con olas de 2 m o más, extrema la precaución a tu nivel.');
+  if (gap(wing.val, idealWing)) warns.push(`Tu vela más cercana (${fmt(wing.val)} m) se aleja del ideal (~${fmt(idealWing)} m).`);
+  if (gap(board.val, idealBoard)) warns.push(`Tu tabla más cercana (${fmt(board.val, 0)} L) se aleja del ideal (~${fmt(idealBoard, 0)} L).`);
+  if (gap(foil.val, idealFoil)) warns.push(`Tu foil más cercano (${fmt(foil.val, 0)} cm²) se aleja del ideal (~${fmt(idealFoil, 0)} cm²).`);
+
+  out.innerHTML =
+    `<div class="item">• <strong>Tabla:</strong> ${esc(board.text)}<span class="why">Ideal ≈ ${fmt(idealBoard, 0)} L</span></div>` +
+    `<div class="item">• <strong>Vela:</strong> ${esc(wing.text)}<span class="why">Ideal ≈ ${fmt(idealWing)} m² (${fmt(weight, 0)} kg, ${fmt(wind, 0)} nudos)</span></div>` +
+    `<div class="item">• <strong>Foil:</strong> ${esc(foil.text)}<span class="why">Ideal ≈ ${fmt(idealFoil, 0)} cm²</span></div>` +
+    warns.map(w => `<p class="warn">⚠️ ${esc(w)}</p>`).join('');
+});
+</script>
+</body>
+</html>
