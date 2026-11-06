@@ -72,8 +72,13 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent-col
   <div class="card">
     <h2>3. Tu arsenal</h2>
     <div class="form-group">
-      <label for="boards">Tablas (litros)</label>
-      <input type="text" id="boards" placeholder="Ej: 45L; 70L; 110L">
+      <label for="boards">Tablas convencionales (litros)</label>
+      <input type="text" id="boards" placeholder="Ej: 45L; 70L">
+    </div>
+    <div class="form-group">
+      <label for="boards-mid">Tablas midlength, despegan antes (litros)</label>
+      <input type="text" id="boards-mid" placeholder="Ej: 110L">
+      <div class="hint">Rellena uno o los dos campos. Deja vacío el que no tengas.</div>
     </div>
     <div class="form-group">
       <label for="wings">Velas (m²)</label>
@@ -128,14 +133,15 @@ function parseGear(str, unitRegex, minVal) {
     .sort((a, b) => a.val - b.val);
 }
 
-// Elige el elemento más cercano al ideal (distancia relativa; empate -> el mayor)
-function nearest(items, ideal) {
-  let best = items[0], bestD = Infinity;
-  for (const it of items) {
-    const d = Math.abs(Math.log(it.val / ideal));
-    if (d < bestD - 1e-9 || (Math.abs(d - bestD) <= 1e-9 && it.val > best.val)) { best = it; bestD = d; }
-  }
-  return best;
+// Elige el más cercano al ideal. Si hay varios casi igual de cerca (±3 %),
+// los niveles altos prefieren el menor y los bajos el mayor.
+function nearest(items, ideal, preferLarger) {
+  const v = it => it.eff || it.val;
+  const sorted = [...items].sort((x, y) => v(x) - v(y));
+  const dist = it => Math.abs(Math.log(v(it) / ideal));
+  const bestD = Math.min(...sorted.map(dist));
+  const close = sorted.filter(it => dist(it) <= bestD + 0.03);
+  return preferLarger ? close[close.length - 1] : close[0];
 }
 
 function showError(msg) {
@@ -153,7 +159,13 @@ $('generate-btn').addEventListener('click', () => {
   if (wind < 0 || wind > 60) return showError('El viento debe estar entre 0 y 60 nudos.');
   if (waves < 0 || waves > 10) return showError('Las olas deben estar entre 0 y 10 m.');
 
-  const boards = parseGear($('boards').value, 'l(?:itros?)?\\b', 20);
+  const MID = 1.2; // una midlength despega antes: equivale a ~20 % más de volumen
+  const tag = (arr, mid) => arr.map(g => ({ ...g, mid, eff: g.val * (mid ? MID : 1) }));
+  const boardUnit = 'l(?:itros?)?\\b';
+  const boards = [
+    ...tag(parseGear($('boards').value, boardUnit, 20), false),
+    ...tag(parseGear($('boards-mid').value, boardUnit, 20), true)
+  ];
   const wings  = parseGear($('wings').value, 'm(?:ts?|etros?|2|²)?\\b', 0.1);
   const foils  = parseGear($('foils').value, 'cm', 100);
 
@@ -164,22 +176,25 @@ $('generate-btn').addEventListener('click', () => {
   const lvlIdx = ['Básico', 'Intermedio', 'Avanzado', 'Experto'].indexOf(level);
   const heavySea = waves >= 1.2 && lvlIdx >= 2;
 
-  // ---- Vela: m² ≈ peso × 0,12 / (viento / 10), ajustada por nivel ----
-  const wingLevel = [1.15, 1.05, 1, 0.92][lvlIdx];
-  const idealWing = Math.max(2, (weight * 0.12 / (Math.max(wind, 6) / 10)) * wingLevel);
-  const wing = nearest(wings, idealWing);
+  const preferLarger = lvlIdx < 2;
 
-  // ---- Tabla: litros ideales según nivel, ajustados por viento y olas ----
-  const boardBase = [weight + 30, weight + 10, weight * 0.75, weight * 0.55][lvlIdx];
-  let idealBoard = boardBase * (wind < 12 ? 1.15 : wind >= 20 ? 0.9 : 1) * (heavySea ? 0.9 : 1);
-  const board = nearest(boards, idealBoard);
+  // ---- Tabla (primero: su tipo condiciona vela y foil) ----
+  const boardBase = [weight + 40, weight + 15, weight * 0.85, weight * 0.65][lvlIdx];
+  const idealBoard = boardBase * (wind < 12 ? 1.15 : wind >= 20 ? 0.9 : 1) * (heavySea ? 0.9 : 1);
+  const board = nearest(boards, idealBoard, preferLarger);
+  const earlyTakeoff = board.mid ? 0.9 : 1; // con midlength se puede bajar un 10 % vela y foil
+
+  // ---- Vela: m² ≈ peso × 0,09 / (viento / 10), ajustada por nivel ----
+  const wingLevel = [1.2, 1.1, 1, 0.92][lvlIdx];
+  const idealWing = Math.max(2, (weight * 0.09 / (Math.max(wind, 6) / 10)) * wingLevel * earlyTakeoff);
+  const wing = nearest(wings, idealWing, preferLarger);
 
   // ---- Foil: cm² ideales según peso, nivel, viento y olas ----
-  const foilK = [28, 22, 17, 13][lvlIdx];
-  let idealFoil = weight * foilK;
+  const foilK = [26, 20, 14, 11][lvlIdx];
+  let idealFoil = weight * foilK * earlyTakeoff;
   idealFoil *= wind < 12 ? 1.25 : wind >= 25 ? 0.75 : wind >= 20 ? 0.85 : 1;
   if (heavySea) idealFoil *= 0.9;
-  const foil = nearest(foils, idealFoil);
+  const foil = nearest(foils, idealFoil, preferLarger);
 
   const gap = (real, ideal) => Math.abs(real / ideal - 1) > 0.3;
 
@@ -189,11 +204,11 @@ $('generate-btn').addEventListener('click', () => {
   if (wind > 30) warns.push('Más de 30 nudos: condiciones extremas, valora no salir.');
   if (waves >= 2 && lvlIdx < 3) warns.push('Con olas de 2 m o más, extrema la precaución a tu nivel.');
   if (gap(wing.val, idealWing)) warns.push(`Tu vela más cercana (${fmt(wing.val)} m) se aleja del ideal (~${fmt(idealWing)} m).`);
-  if (gap(board.val, idealBoard)) warns.push(`Tu tabla más cercana (${fmt(board.val, 0)} L) se aleja del ideal (~${fmt(idealBoard, 0)} L).`);
+  if (gap(board.eff, idealBoard)) warns.push(`Tu tabla más cercana (${fmt(board.val, 0)} L${board.mid ? ', midlength' : ''}) se aleja del ideal (~${fmt(idealBoard, 0)} L).`);
   if (gap(foil.val, idealFoil)) warns.push(`Tu foil más cercano (${fmt(foil.val, 0)} cm²) se aleja del ideal (~${fmt(idealFoil, 0)} cm²).`);
 
   out.innerHTML =
-    `<div class="item">• <strong>Tabla:</strong> ${esc(board.text)}<span class="why">Ideal ≈ ${fmt(idealBoard, 0)} L</span></div>` +
+    `<div class="item">• <strong>Tabla:</strong> ${esc(board.text)}${board.mid ? ' (midlength)' : ''}<span class="why">Ideal ≈ ${fmt(idealBoard, 0)} L${board.mid ? ' · despega antes: vela y foil un 10 % menores' : ''}</span></div>` +
     `<div class="item">• <strong>Vela:</strong> ${esc(wing.text)}<span class="why">Ideal ≈ ${fmt(idealWing)} m² (${fmt(weight, 0)} kg, ${fmt(wind, 0)} nudos)</span></div>` +
     `<div class="item">• <strong>Foil:</strong> ${esc(foil.text)}<span class="why">Ideal ≈ ${fmt(idealFoil, 0)} cm²</span></div>` +
     warns.map(w => `<p class="warn">⚠️ ${esc(w)}</p>`).join('');
