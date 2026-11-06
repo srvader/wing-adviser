@@ -27,6 +27,12 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent-col
 .why{display:block;font-size:.8rem;font-weight:400;color:var(--text-muted)}
 .warn{color:var(--warn);font-size:.9rem;margin:6px 0 0}
 .err{color:#ff6b6b}
+.foil{border:1px solid var(--border-color);border-radius:8px;padding:10px;margin-bottom:10px}
+.foil-top{display:flex;gap:8px;margin-bottom:8px}
+.foil-nums{display:flex;gap:8px}
+.foil input{flex:1;min-width:0}
+.btn-x{background:none;border:1px solid var(--border-color);color:var(--text-muted);border-radius:8px;width:44px;font-size:1.1rem;cursor:pointer}
+.btn-add{width:100%;background:none;border:1px dashed var(--accent-color);color:var(--accent-color);padding:10px;border-radius:8px;font-size:.95rem;cursor:pointer}
 </style>
 </head>
 <body>
@@ -86,8 +92,10 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent-col
       <div class="hint">Admite decimales con coma (5,5). Separa con ";", "-", "/" o "y".</div>
     </div>
     <div class="form-group">
-      <label for="foils">Foils (cm² del ala frontal)</label>
-      <input type="text" id="foils" placeholder="Ej: Axis 1000; Gong 1500">
+      <label>Foils</label>
+      <div id="foil-list"></div>
+      <button type="button" class="btn-add" id="add-foil">+ Añadir foil</button>
+      <div class="hint">Indica la superficie en cm². El cálculo asume foils de AR 9: si el tuyo es distinto, rellena su aspect ratio.</div>
     </div>
     <button class="btn-primary" id="generate-btn">Obtener setup óptimo</button>
   </div>
@@ -101,6 +109,21 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent-col
 <script>
 const $ = id => document.getElementById(id);
 const out = $('result-content');
+const foilList = $('foil-list');
+
+function addFoilRow() {
+  const d = document.createElement('div');
+  d.className = 'foil';
+  d.innerHTML = '<div class="foil-top"><input type="text" class="f-name" placeholder="Nombre (ej. Veloce H)" aria-label="Nombre del foil"><button type="button" class="btn-x" aria-label="Quitar foil">✕</button></div>' +
+    '<div class="foil-nums"><input type="number" class="f-area" inputmode="decimal" placeholder="cm² (ej. 1200)" aria-label="Superficie en cm²"><input type="number" step="0.1" class="f-ar" inputmode="decimal" placeholder="AR (9 por defecto)" aria-label="Aspect ratio"></div>';
+  d.querySelector('.btn-x').addEventListener('click', () => {
+    if (foilList.children.length > 1) d.remove();
+    else d.querySelectorAll('input').forEach(i => { i.value = ''; });
+  });
+  foilList.appendChild(d);
+}
+$('add-foil').addEventListener('click', addFoilRow);
+addFoilRow();
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = (n, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toString().replace('.', ',');
@@ -169,11 +192,18 @@ $('generate-btn').addEventListener('click', () => {
     ...tag(parseGear($('boards-mid').value, boardUnit, 20), true)
   ];
   const wings  = parseGear($('wings').value, 'm(?:ts?|etros?|2|²)?\\b', 0.1);
-  const foils  = parseGear($('foils').value, 'cm', 100);
+const foils = [...foilList.querySelectorAll('.foil')].map((row, i) => {
+    const name = row.querySelector('.f-name').value.trim();
+    const val = parseFloat(row.querySelector('.f-area').value);
+    const arRaw = parseFloat(row.querySelector('.f-ar').value);
+    const ar = isNaN(arRaw) ? null : Math.min(14, Math.max(4, arRaw));
+    // base AR 9: cada punto de más (menos) suma (resta) ~5 % de área efectiva
+    return { text: `${name || 'Foil ' + (i + 1)} ${fmt(val, 0)} cm²`, val, ar, eff: val * (1 + 0.05 * ((ar || 9) - 9)) };
+  }).filter(f => f.val >= 100 && f.val <= 4000);
 
   if (!boards.length) return showError('No encuentro ninguna tabla. Escribe los litros, por ejemplo: 70L; 110L.');
   if (!wings.length)  return showError('No encuentro ninguna vela. Escribe los metros, por ejemplo: 4; 5,5; 6.');
-  if (!foils.length)  return showError('No encuentro ningún foil. Escribe la superficie en cm², por ejemplo: Axis 1000.');
+  if (!foils.length)  return showError('Añade al menos un foil con su superficie en cm² (entre 100 y 4000).');
 
   const lvlIdx = ['Básico', 'Intermedio', 'Avanzado', 'Experto'].indexOf(level);
   const heavySea = waves >= 1.2 && lvlIdx >= 2;
@@ -207,12 +237,16 @@ $('generate-btn').addEventListener('click', () => {
   if (waves >= 2 && lvlIdx < 3) warns.push('Con olas de 2 m o más, extrema la precaución a tu nivel.');
   if (gap(wing.val, idealWing)) warns.push(`Tu vela más cercana (${fmt(wing.val)} m) se aleja del ideal (~${fmt(idealWing)} m).`);
   if (gap(board.eff, idealBoard)) warns.push(`Tu tabla más cercana (${fmt(board.val, 0)} L${board.mid ? ', midlength' : ''}) se aleja del ideal (~${fmt(idealBoard, 0)} L).`);
-  if (gap(foil.val, idealFoil)) warns.push(`Tu foil más cercano (${fmt(foil.val, 0)} cm²) se aleja del ideal (~${fmt(idealFoil, 0)} cm²).`);
+  if (gap(foil.eff, idealFoil)) warns.push(`Tu foil más cercano (${fmt(foil.eff, 0)} cm² efectivos) se aleja del ideal (~${fmt(idealFoil, 0)} cm²).`);
+
+  if (foil.ar && foil.ar >= 10 && lvlIdx === 0) warns.push('Foil de AR alto: muy eficiente pero exigente para tu nivel; mejor uno de AR bajo o medio.');
+  if (foil.ar && foil.ar >= 10 && heavySea) warns.push('Con olas, un AR alto es más rápido pero menos ágil en los giros.');
+  if (foil.ar && foil.ar <= 6 && wind >= 20) warns.push('Un AR bajo con mucho viento va más frenado; valora uno de AR más alto.');
 
   out.innerHTML =
     `<div class="item">• <strong>Tabla:</strong> ${esc(board.text)}${board.mid ? ' (midlength)' : ''}<span class="why">Ideal ≈ ${fmt(idealBoard, 0)} L${board.mid ? ' · despega antes: vela y foil un 10 % menores' : ''}</span></div>` +
     `<div class="item">• <strong>Vela:</strong> ${esc(wing.text)}<span class="why">Ideal ≈ ${fmt(idealWing)} m² (${fmt(weight, 0)} kg, ${fmt(wind, 0)} nudos)</span></div>` +
-    `<div class="item">• <strong>Foil:</strong> ${esc(foil.text)}<span class="why">Ideal ≈ ${fmt(idealFoil, 0)} cm²</span></div>` +
+    `<div class="item">• <strong>Foil:</strong> ${esc(foil.text)}<span class="why">Ideal ≈ ${fmt(idealFoil, 0)} cm²${foil.ar ? ` · AR ${fmt(foil.ar)} ≈ ${fmt(foil.eff, 0)} cm² efectivos` : ' · AR 9 (supuesto)'}</span></div>` +
     warns.map(w => `<p class="warn">⚠️ ${esc(w)}</p>`).join('');
 });
 </script>
