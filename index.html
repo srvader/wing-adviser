@@ -131,7 +131,7 @@
     <div class="container">
         <header>
             <h1>WINGFOIL ADVISOR</h1>
-            <p>Selector de Material Local (Sin IA)</p>
+            <p>Selector de Material Local (Matriz Oficial)</p>
         </header>
 
         <div class="card">
@@ -144,8 +144,10 @@
                 <div class="form-group">
                     <label for="level">Nivel</label>
                     <select id="level">
+                        <option value="Básico">Básico</option>
                         <option value="Intermedio">Intermedio</option>
                         <option value="Avanzado" selected>Avanzado</option>
+                        <option value="Experto">Experto</option>
                     </select>
                 </div>
             </div>
@@ -153,10 +155,6 @@
 
         <div class="card">
             <h2>2. Condiciones de la Previsión</h2>
-            <div class="form-group">
-                <label for="spot">Spot</label>
-                <input type="text" id="spot" value="Cortadura">
-            </div>
             <div class="row">
                 <div class="form-group">
                     <label for="wind-knots">Viento medio (nudos)</label>
@@ -189,7 +187,7 @@
 
         <div class="card">
             <h2>Setup Recomendado</h2>
-            <div class="result-box" id="result-content">Introduce los datos de la previsión y pulsa el botón.</div>
+            <div class="result-box" id="result-content">Introduce los datos y pulsa el botón para ver tu material.</div>
         </div>
     </div>
 
@@ -198,42 +196,42 @@
         const resultContent = document.getElementById('result-content');
 
         generateBtn.addEventListener('click', () => {
+            const level = document.getElementById('level').value;
             const wind = parseFloat(document.getElementById('wind-knots').value) || 0;
             const waves = parseFloat(document.getElementById('wave-height').value) || 0;
 
-            // Lógica determinista basada en tus criterios de material
             let selectedBoard = "";
             let selectedWing = "";
             let selectedFoil = "";
 
-            // 1. Selección de Tabla (Umbral de 16 nudos)
-            if (wind >= 16) {
-                selectedBoard = "Mint 75L";
-            } else {
+            // 1. Selección de Tabla según matriz (Básico usa tabla larga; intermedio/avanzado/experto usan corta a partir de 16 nudos)
+            if (level === "Básico") {
                 selectedBoard = "Cruzader 122L";
+            } else {
+                selectedBoard = wind >= 16 ? "Mint 75L" : "Cruzader 122L";
             }
 
-            // 2. Selección de Vela / Parawing según intensidad de viento
-            if (wind >= 25) {
-                selectedWing = "Parawing 4m";
-            } else if (wind >= 18) {
-                selectedWing = "Parawing 4m o 5m";
-            } else if (wind >= 14) {
+            // 2. Selección de Vela / Parawing según rangos de viento de la matriz
+            if (wind > 25) {
+                selectedWing = level === "Avanzado" || level === "Experto" ? "Parawing 4m" : "Parawing 4m";
+            } else if (wind >= 15) {
+                selectedWing = wind >= 20 ? "Parawing 4m" : "Parawing 5m";
+            } else if (wind >= 10) {
                 selectedWing = "Parawing 5m";
             } else {
                 selectedWing = "Wing 6m";
             }
 
-            // 3. Selección de Hydrofoil según presencia de olas y viento
-            if (waves >= 1.2 && wind >= 18) {
-                selectedFoil = "Foil 900";
-            } else if (waves >= 0.8) {
-                selectedFoil = "Foil 1200";
-            } else {
+            // 3. Selección de Hydrofoil según Nivel y matriz técnica
+            if (level === "Básico") {
                 selectedFoil = "Foil 1700";
+            } else if (level === "Intermedio") {
+                selectedFoil = "Foil 1200";
+            } else { // Avanzado / Experto
+                selectedFoil = (waves >= 1.2 && wind >= 18) ? "Foil 900" : "Foil 1200";
             }
 
-            // Mostrar resultado limpio, corto y directo
+            // Mostrar resultado directo y limpio
             resultContent.innerHTML = `
                 • <strong>Tabla:</strong> ${selectedBoard}<br>
                 • <strong>Vela:</strong> ${selectedWing}<br>
