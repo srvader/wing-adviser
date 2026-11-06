@@ -89,7 +89,7 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent-col
     <div class="form-group">
       <label for="wings">Velas (m²)</label>
       <input type="text" id="wings" placeholder="Ej: 4; 5; 5,5; 6,5">
-      <div class="hint">Admite decimales con coma (5,5). Separa con ";", "-", "/" o "y".</div>
+      <div class="hint">Solo los metros, sin marca. Admite coma o punto decimal (5,5) y separa con espacio, ";", "-", "/" o "y".</div>
     </div>
     <div class="form-group">
       <label>Foils</label>
@@ -167,16 +167,37 @@ document.addEventListener('change', saveState);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = (n, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toString().replace('.', ',');
 
-// Separa la lista respetando la coma decimal: "5,5" es un número; "5, 6" son dos.
-// También separa con guion entre números ("4-5,5-6") y con espacios si solo hay números.
-function parseList(str) {
-  let t = str.replace(/(\d),(\d)/g, '$1.$2').replace(/\s+y\s+/gi, ';');
-  if (/^[\d.\s]+$/.test(t)) t = t.trim().replace(/\s+/g, ';');
-  return t
-    .replace(/(?<=[\d.])\s*[-–]\s*(?=\d)/g, ';')
-    .split(/[;,+\/\n]/)
-    .map(x => x.trim())
-    .filter(Boolean);
+// Número con unidad opcional (m, m², mts, L, litros...). Sirve para listas separadas solo por espacios.
+const NUM_UNIT = /\d+(?:\.\d+)?\s*(?:m(?:ts?|etros?|2|²)?|l(?:itros?)?)?/gi;
+
+// Número con unidad explícita (5.5m, 95L...). Permite separar "Gong 95L Cabrinha 110L" aunque solo haya espacios.
+const EXPLICIT = /\d+(?:\.\d+)?\s*(?:m(?:ts?|etros?|2|²)?|l(?:itros?)?)(?![a-z\d])/gi;
+
+// Separa una lista tolerando: ; , / + - y, espacios ("4 5 5,5"), unidades ("4m 5m") y coma o punto decimal.
+// decimalComma=true (velas): "5,5" es 5.5. false (tablas): la coma siempre separa.
+function parseList(str, decimalComma = true) {
+  let t = str.trim().replace(/\s+y\s+/gi, ';');
+  if (decimalComma) {
+    // "4,5,6,7" (3+ enteros cortos sin espacios) es una lista; "5,5" o "4,5 6" usan coma decimal
+    if (/^\d{1,2}(?:,\d{1,2}){2,}$/.test(t)) t = t.replace(/,/g, ';');
+    else t = t.replace(/(\d),(\d)/g, '$1.$2');
+  }
+  const out = [];
+  t.replace(/(?<=[\d.])\s*[-–]\s*(?=\d)/g, ';').split(/[;,+\/\n]/).forEach(tok => {
+    tok = tok.trim();
+    if (!tok) return;
+    const nums = tok.match(NUM_UNIT);
+    // un trozo que solo tiene números y unidades ("4 5 5.5" o "4m 5m") se divide en varios
+    if (nums && nums.length > 1 && tok.replace(NUM_UNIT, '').trim() === '') nums.forEach(n => out.push(n.trim()));
+    else {
+      const ex = [...tok.matchAll(EXPLICIT)];
+      if (ex.length > 1) {
+        let prev = 0;
+        ex.forEach(m => { const end = m.index + m[0].length; out.push(tok.slice(prev, end).trim()); prev = end; });
+      } else out.push(tok);
+    }
+  });
+  return out;
 }
 
 // Extrae un número: prioriza el que lleva unidad; si no, el último número del texto.
@@ -190,11 +211,15 @@ function extract(text, unitRegex, minVal = 0) {
   return nums.length ? nums[nums.length - 1] : 0;
 }
 
-function parseGear(str, unitRegex, minVal) {
-  return parseList(str)
-    .map(text => ({ text, val: extract(text, unitRegex, minVal) }))
-    .filter(g => g.val > 0)
-    .sort((a, b) => a.val - b.val);
+// Devuelve los elementos válidos (min..max) ordenados; lo descartado va a `ignored`.
+function parseGear(str, unitRegex, min, max, decimalComma, ignored) {
+  const items = [];
+  parseList(str, decimalComma).forEach(text => {
+    const val = extract(text, unitRegex, min);
+    if (val >= min && val <= max) items.push({ text, val });
+    else ignored.push(text);
+  });
+  return items.sort((x, y) => x.val - y.val);
 }
 
 // Elige el más cercano al ideal. Si hay varios casi igual de cerca (±3 %),
@@ -217,22 +242,26 @@ $('generate-btn').addEventListener('click', () => {
   const level = $('level').value;
   const weight = parseFloat($('weight').value);
   const wind = parseFloat($('wind-knots').value);
-  const waves = parseFloat($('wave-height').value);
+  const waves = String($('wave-height').value).trim() === '' ? 0 : parseFloat($('wave-height').value); // vacío = sin olas
 
-  if ([weight, wind, waves].some(isNaN)) return showError('Rellena peso, viento y olas (usa 0 si no hay olas).');
+  if ([weight, wind, waves].some(isNaN)) return showError('Rellena al menos el peso y el viento.');
   if (weight < 30 || weight > 200) return showError('El peso debe estar entre 30 y 200 kg.');
   if (wind < 0 || wind > 60) return showError('El viento debe estar entre 0 y 60 nudos.');
   if (waves < 0 || waves > 10) return showError('Las olas deben estar entre 0 y 10 m.');
 
   const MID = 1.2; // una midlength despega antes: equivale a ~20 % más de volumen
+  const ignored = [];
   const tag = (arr, mid) => arr.map(g => ({ ...g, mid, eff: g.val * (mid ? MID : 1) }));
   const boardUnit = 'l(?:itros?)?\\b';
+  const wingUnit = 'm(?:ts?|etros?|2|²)?\\b';
   const boards = [
-    ...tag(parseGear($('boards').value, boardUnit, 20), false),
-    ...tag(parseGear($('boards-mid').value, boardUnit, 20), true)
+    ...tag(parseGear($('boards').value, boardUnit, 20, 300, false, ignored), false),
+    ...tag(parseGear($('boards-mid').value, boardUnit, 20, 300, false, ignored), true)
   ];
-  const wings  = parseGear($('wings').value, 'm(?:ts?|etros?|2|²)?\\b', 0.1);
-const foils = [...foilList.querySelectorAll('.foil')].map((row, i) => {
+  const wings = parseGear($('wings').value, wingUnit, 1.5, 14, true, ignored);
+  // si tras quitar números, unidades y separadores queda texto, el rider ha escrito marca o modelo
+  const wingHasBrand = wings.some(w => w.text.replace(NUM_UNIT, '').replace(/[\s.,;\-–\/+]|\by\b/gi, '') !== '');
+  const foils = [...foilList.querySelectorAll('.foil')].map((row, i) => {
     const name = row.querySelector('.f-name').value.trim();
     const val = parseFloat(row.querySelector('.f-area').value);
     const arRaw = parseFloat(row.querySelector('.f-ar').value);
@@ -241,8 +270,8 @@ const foils = [...foilList.querySelectorAll('.foil')].map((row, i) => {
     return { text: `${name || 'Foil ' + (i + 1)} ${fmt(val, 0)} cm²`, val, ar, eff: val * (1 + 0.05 * ((ar || 9) - 9)) };
   }).filter(f => f.val >= 100 && f.val <= 4000);
 
-  if (!boards.length) return showError('No encuentro ninguna tabla. Escribe los litros, por ejemplo: 70L; 110L.');
-  if (!wings.length)  return showError('No encuentro ninguna vela. Escribe los metros, por ejemplo: 4; 5,5; 6.');
+  if (!boards.length) return showError('No encuentro ninguna tabla válida (entre 20 y 300 L). Ejemplo: 70L; 110L.');
+  if (!wings.length)  return showError('No encuentro ninguna vela válida (entre 1,5 y 14 m). Ejemplo: 4; 5,5; 6.');
   if (!foils.length)  return showError('Añade al menos un foil con su superficie en cm² (entre 100 y 4000).');
 
   const lvlIdx = ['Básico', 'Intermedio', 'Avanzado', 'Experto'].indexOf(level);
@@ -283,11 +312,14 @@ const foils = [...foilList.querySelectorAll('.foil')].map((row, i) => {
   if (foil.ar && foil.ar >= 10 && heavySea) warns.push('Con olas, un AR alto es más rápido pero menos ágil en los giros.');
   if (foil.ar && foil.ar <= 6 && wind >= 20) warns.push('Un AR bajo con mucho viento va más frenado; valora uno de AR más alto.');
 
+  if (wingHasBrand) warns.push('No hace falta escribir la marca ni el modelo de la vela: bastan los metros (ej. 4; 5,5; 6).');
+  if (ignored.length) warns.push(`He ignorado: ${ignored.join(', ')} (no es un valor válido o está fuera de rango).`);
   out.innerHTML =
     `<div class="item">• <strong>Tabla:</strong> ${esc(board.text)}${board.mid ? ' (midlength)' : ''}<span class="why">Ideal ≈ ${fmt(idealBoard, 0)} L${board.mid ? ' · despega antes: vela y foil un 10 % menores' : ''}</span></div>` +
     `<div class="item">• <strong>Vela:</strong> ${esc(wing.text)}<span class="why">Ideal ≈ ${fmt(idealWing)} m² (${fmt(weight, 0)} kg, ${fmt(wind, 0)} nudos)</span></div>` +
     `<div class="item">• <strong>Foil:</strong> ${esc(foil.text)}<span class="why">Ideal ≈ ${fmt(idealFoil, 0)} cm²${foil.ar ? ` · AR ${fmt(foil.ar)} ≈ ${fmt(foil.eff, 0)} cm² efectivos` : ' · AR 9 (supuesto)'}</span></div>` +
-    warns.map(w => `<p class="warn">⚠️ ${esc(w)}</p>`).join('');
+    warns.map(w => `<p class="warn">⚠️ ${esc(w)}</p>`).join('') +
+    `<p class="hint">Leído → Tablas: ${esc(boards.map(b => fmt(b.val, 0) + ' L' + (b.mid ? ' mid' : '')).join(' · '))} · Velas: ${esc(wings.map(w => fmt(w.val) + ' m').join(' · '))}</p>`;
 });
 </script>
 </body>
